@@ -59,7 +59,7 @@ router.get('/user/token', function (req, res) {
 
           })
           .catch(function (error) {
-            res.status(error.statusCode).end(error.statusMessage);
+            res.status(500).end(error.developerMessage);
           });
     } catch (err) {
         res.status(500).end(err);
