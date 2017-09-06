@@ -1017,7 +1017,7 @@ function initializeViewer(urn) {
 
     var options = {
         document: 'urn:' + urn,
-        env: 'AutodeskDevelopment', //'AutodeskProduction',
+        env: 'AutodeskProduction',
         getAccessToken: get2LegToken // this works fine, but if I pass get2LegToken it only works the first time
     };
 
