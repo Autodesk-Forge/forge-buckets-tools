@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0">
+    <title>OSS Manager sample</title>
+    <link rel="stylesheet" href="/css/jstree.style.min.css"/>
+    <link rel="stylesheet" href="/css/bootstrap.min.css">
+    <!--<link rel="stylesheet" href="https://developer-stg.api.autodesk.com/viewingservice/v1/viewers/style.css"-->
+    <!--type="text/css">-->
+    <script language="JavaScript" src="/js/jquery.min.js"></script>
+    <script language="JavaScript" src="/js/jquery.storageapi.min.js"></script>
+    <script language="JavaScript" src="/js/scripts.js"></script>
+    <script src="/js/jstree.js"></script>
+    <script src="/js/bootstrap.min.js"></script>
+
+    <!-- for the viewer -->
+    <script src="https://developer-dev.api.autodesk.com/viewingservice/v1/viewers/three.min.js?v=v2.16"></script>
+    <!-- Last working version was 2.8
+      <script src="https://developer.api.autodesk.com/viewingservice/v1/viewers/viewer3D.js?v=v2.10"></script>
+      <link rel="stylesheet" href="https://developer.api.autodesk.com/viewingservice/v1/viewers/style.min.css?v=v2.10"/>
+    ?v=v2.10 -->
+    <script src="https://developer-dev.api.autodesk.com/viewingservice/v1/viewers/viewer3D.js?v=v2.16"></script>
+    <link rel="stylesheet" href="https://developer-dev.api.autodesk.com/viewingservice/v1/viewers/style.min.css?v=v2.16"/>
+
+    <link rel="stylesheet" href="/css/index.css"/>
+</head>
+<body>
+<div class="container">
+    <div class="jumbotron">
+        <h3>OSS Manager - Basic Node.js Sample</h3>
+<!--        <input id="client_id" value="lHxPABu9A3zuGGrQbq3ZdMJeWPLgEx9P" style="width: 20%" />
+        <input id="client_secret" value="G7ofD1U1tGK4FHrb" style="width: 20%" /> -->
+        <input id="client_id" value="GJwLGGb46KNlzQE94KF1Pw7LTZ3NvOKp" style="width: 20%" />
+        <input id="client_secret" value="4AljdBWto8vYAbXR" style="width: 20%" />
+        <input id="scopes" value="data:read data:write data:create bucket:read bucket:delete bucket:update bucket:create" style="width: 50%" />
+        <br />
+        For a list of all the possible scopes that you can allow this app have a look at <a src="https://developer.autodesk.com/en/docs/oauth/v2/overview/scopes/">https://developer.autodesk.com/en/docs/oauth/v2/overview/scopes/</a>
+        <div class="row">
+            <div class="col-sm-3" style="height:40px">
+
+                <a href="#" id="authenticate" class="btn btn-warning btn-block">
+                    <span class="glyphicon glyphicon-user"></span>
+                    Log In
+                </a>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-sm-3" style="height:40px">
+                <div id="progressInfo" class="btn btn-info" style="font-size: 10pt ">
+                    <span id="progressInfoText">Progress info</span>
+                    <span id="progressInfoIcon"></span>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+
+        </div>
+        <div class="row" style="background: white">
+            <div class="col-sm-3 forgeTreeContainer">
+                <div id="forgeFiles">
+
+                </div>
+                <div id="forgeCreateBucket" class="forgeControlContainer">
+
+                    <div id="forgeBucketName" >
+                        <input id="bucketName"  style="display: inline-block;" class="input-small form-control" />
+                        <select id="bucketType" style="display: inline-block; margin-top: 5px;" class="input-small form-control">
+                            <option value="transient">transient</option>
+                            <option value="temporary">temporary</option>
+                            <option value="persistent">persistent</option>
+                        </select>
+
+                        <a id="createBucket" style="display: inline-block; margin-top: 5px;" class="btn btn-warning">
+                            <span class="glyphicon glyphicon-plus"></span>
+                            &nbsp;Create bucket
+                        </a>
+                        <input type="file" id="forgeUploadHidden" hidden />
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-4 forgeTreeContainer" style="position: relative">
+                <div id="forgeHierarchy" class="forgeControl"></div>
+                <div id="forgeFileOptions" class="forgeControlContainer" style="height:50px; overflow: hidden;">
+
+                    <div style="display: inline-block">
+                        <select id="forgeFormats" class="input-small form-control" style="width:90px">
+                        </select>
+                     </div>
+
+                    <div style="display: inline-block">
+                        <a id="downloadExport" class="btn btn-warning">
+                            <span class="glyphicon glyphicon-save-file"></span>
+                            Download
+                        </a>
+                    </div>
+
+                    <div style="display: inline-block">
+                        <a id="deleteManifest" class="btn btn-warning">
+                            <span class="glyphicon glyphicon-trash"></span>
+                            Delete
+                        </a>
+                    </div>
+                </div>
+                <div id="forgeProperties" class="forgeControl"></div>
+            </div>
+
+            <div class="col-sm-5 forgeViewer">
+                <div id="forgeViewer"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<iframe id="fusionLoader" width="1" height="1" style="visibility:hidden"></iframe>
+
+</body>
+</html>
