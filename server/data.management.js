@@ -9,6 +9,7 @@ var router = express.Router();
 
 var bodyParser = require('body-parser');
 var jsonParser = bodyParser.json();
+var rawParser = bodyParser.raw({limit: '10mb'});
 
 var formidable = require('formidable');
 var path = require('path');
@@ -65,7 +66,8 @@ router.delete('/files/:id', function (req, res) {
     var boName = getBucketKeyObjectName(id)
 
     var objects = new forgeSDK.ObjectsApi();
-    objects.deleteObject(boName.bucketKey, boName.objectName, tokenSession.getOAuth(), tokenSession.getCredentials())
+    var objectName = decodeURIComponent(boName.objectName)
+    objects.deleteObject(boName.bucketKey, objectName, tokenSession.getOAuth(), tokenSession.getCredentials())
       .then(function (data) {
           res.json({ status: "success" })
       })
@@ -139,7 +141,37 @@ router.post('/files', jsonParser, function (req, res) {
 
         });
 
+    form.multiples = true;
     form.parse(req);
+});
+
+router.post('/chunks', rawParser, function (req, res) {
+  // Uploading a file to app bucket
+
+  var tokenSession = new token(req.session);
+
+  var fileName = req.headers['x-file-name'];
+  var bucketName = req.headers.id
+  var data = req.body;
+  var range = req.headers.range;
+  var sessionId = req.headers.sessionid;
+
+  // Upload the new file
+  var objects = new forgeSDK.ObjectsApi();
+  objects.uploadChunk(bucketName, fileName, data.length, range, sessionId, data, {}, tokenSession.getOAuth(), tokenSession.getCredentials())
+    .then(function (objectData) {
+      console.log('uploadObject: succeeded');
+      res.status(objectData.statusCode).json(objectData.body);
+    })
+    .catch(function (error) {
+      console.log('uploadObject: failed');
+      try {
+        res.status(error.statusCode).end(error.statusMessage);
+      } catch (Exception) {
+        res.status(500).end("Unknown error");
+      }
+    });
+
 });
 
 function getBucketKeyObjectName(objectId) {
@@ -214,6 +246,7 @@ function makeTree(items, isBucket) {
             id: isBucket ? item.bucketKey : item.objectId,
             text: isBucket ? item.bucketKey + " [" + item.policyKey + "]" : item.objectKey,
             type: isBucket ? "bucket" : "file",
+            sha1: item.sha1,
             children: isBucket
         };
         console.log(treeItem);

@@ -28,9 +28,81 @@ $(document).ready(function () {
         }) ;
     });
 
+    function uuidv4() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
+    }
+
+    function uploadChunks (file){
+        var loaded = 0;
+        var step = 2 * 1024*1024; // 2 MB suggested
+        var total = file.size;  // total size of file
+        var start = 0;          // starting position
+        var reader = new FileReader();
+        var blob = file.slice(start,step); //a single chunk in starting of step size
+        reader.readAsArrayBuffer(blob);   // reading that chunk. when it read it, onload will be invoked
+
+        var folderId = MyVars.selectedNode.id;
+        var fileName = file.name;
+        var sessionId = uuidv4();
+
+        reader.onload = function(e){
+            //var d = {file:reader.result}
+            var currentStart = start
+            var currentEnd = start + e.loaded - 1;
+            start = currentEnd + 1
+            var res = reader.result
+            var range = 'bytes ' + currentStart + "-" + currentEnd + "/" + total
+
+            console.log("uploadChunks >> ajax: sessionId = " + sessionId + ", range = " + range);
+            $.ajax({
+                url:"/dm/chunks",
+                type:"POST",
+                headers: {
+                    'Content-Type': 'application/octet-stream',
+                    'x-file-name': fileName,
+                    'id': folderId,
+                    'sessionid': sessionId,
+                    'range': range
+                },
+                processData: false,
+                data:res                     // d is the chunk got by readAsBinaryString(...)
+            }).done(function(r){           // if 'd' is uploaded successfully then ->
+                //$('.record_reply_g').html(r);   //updating status in html view
+
+                loaded += step;                 //increasing loaded which is being used as start position for next chunk
+                //$('.upload_rpogress').html((loaded/total) * 100);
+
+                if(loaded <= total){            // if file is not completely uploaded
+                    blob = file.slice(loaded,loaded+step);  // getting next chunk
+                    reader.readAsArrayBuffer(blob);        //reading it through file reader which will call onload again. So it will happen recursively until file is completely uploaded.
+                } else {                       // if file is uploaded completely
+                    loaded = total;            // just changed loaded which could be used to show status.
+                    // We're finished
+                    console.log("uploadChunks >> done");
+                    showProgress("File uploaded", "success");
+                    $("#forgeUploadHidden").val('');
+                    $('#forgeFiles').jstree(true).refresh()
+                }
+            }).fail (function (error) {
+                console.log("uploadChunks >> fail");
+                showProgress("Upload failed", "failed");
+                $("#forgeUploadHidden").val('');
+            })
+        };
+    }
+
     $("#forgeUploadHidden").change(function(evt) {
 
         showProgress("Uploading file... ", "inprogress");
+
+        uploadChunks(this.files[0]);
+
+        return;
+
+
         var data = new FormData () ;
         var fileName = this.value;
         var that = this
