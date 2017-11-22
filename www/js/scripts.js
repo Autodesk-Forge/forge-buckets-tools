@@ -832,7 +832,7 @@ function showHierarchy(urn, guid, objectIds, rootFileName, fileExtType) {
                     // from the urn
                     if (der.outputType === 'svf') {
 
-                        initializeViewer(urn);
+                        //initializeViewer(urn);
                     }
                 }
 
