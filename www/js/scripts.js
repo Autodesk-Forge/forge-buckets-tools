@@ -1100,6 +1100,7 @@ function initializeViewer(urn) {
 
     if (MyVars.viewer) {
         loadDocument(MyVars.viewer, options.document);
+        addSelectionListener(MyVars.viewer);
     } else {
         var viewerElement = document.getElementById('forgeViewer');
         var config = {
