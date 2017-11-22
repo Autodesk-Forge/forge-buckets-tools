@@ -1080,8 +1080,10 @@ function cleanupViewer() {
     if (MyVars.viewer && MyVars.viewer.model) {
         console.log("Unloading current model from Autodesk Viewer");
 
-        MyVars.viewer.impl.unloadModel(MyVars.viewer.model);
-        MyVars.viewer.impl.sceneUpdated(true);
+        //MyVars.viewer.impl.unloadModel(MyVars.viewer.model);
+        //MyVars.viewer.impl.sceneUpdated(true);
+        MyVars.viewer.tearDown();
+        MyVars.viewer.setUp(MyVars.viewer.config);
     }
 }
 
