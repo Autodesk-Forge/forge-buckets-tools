@@ -355,7 +355,7 @@ function askForFileType(format, urn, guid, objectIds, rootFileName, fileExtType,
 }
 
 // We need this in order to get an OBJ file for the model
-function getMetadata(urn, onsuccess) {
+function getMetadata(urn, onsuccess, onerror) {
     console.log("getMetadata for urn=" + urn);
     $.ajax({
         url: '/md/metadatas/' + urn,
@@ -379,6 +379,7 @@ function getMetadata(urn, onsuccess) {
         }
     }).fail(function(err) {
         console.log('GET /md/metadata call failed\n' + err.statusText);
+        onerror();
     });
 }
 
@@ -817,10 +818,8 @@ function showHierarchy(urn, guid, objectIds, rootFileName, fileExtType) {
     // for the model
     var format = 'svf';
     askForFileType(format, urn, guid, objectIds, rootFileName, fileExtType, function (manifest) {
+        initializeViewer(urn);
         getMetadata(urn, function (guid) {
-            initializeViewer(urn);
-
-            /*
             showProgress("Retrieving hierarchy...", "inprogress");
 
             getHierarchy(urn, guid, function (data) {
@@ -839,7 +838,9 @@ function showHierarchy(urn, guid, objectIds, rootFileName, fileExtType) {
 
                 prepareHierarchyTree(urn, guid, data.data);
             });
-            */
+
+        }, function () {
+
         });
     });
 }
@@ -941,21 +942,23 @@ function prepareHierarchyTree(urn, guid, json) {
 function selectInHierarchyTree(objectIds) {
     MyVars.selectingInHierarchyTree = true;
 
-    var tree = $("#forgeHierarchy").jstree();
+    try {
+        var tree = $("#forgeHierarchy").jstree();
 
-    // First remove all the selection
-    tree.uncheck_all();
+        // First remove all the selection
+        tree.uncheck_all();
 
-    // Now select the newly selected items
-    for (var key in objectIds) {
-        var id = objectIds[key];
+        // Now select the newly selected items
+        for (var key in objectIds) {
+            var id = objectIds[key];
 
-        // Select the node
-        tree.check_node(id);
+            // Select the node
+            tree.check_node(id);
 
-        // Make sure that it is visible for the user
-        tree._open_to(id);
-    }
+            // Make sure that it is visible for the user
+            tree._open_to(id);
+        }
+    } catch (ex) {}
 
     MyVars.selectingInHierarchyTree = false;
 }
@@ -1130,11 +1133,11 @@ function addSelectionListener(viewer) {
 
 function loadDocument(viewer, documentId) {
     // Set the Environment to "Riverbank"
-    viewer.setLightPreset(8);
+    //viewer.setLightPreset(8);
 
     // Make sure that the loaded document's setting won't
     // override it and change it to something else
-    viewer.prefs.tag('ignore-producer');
+    //viewer.prefs.tag('ignore-producer');
 
     Autodesk.Viewing.Document.load(
         documentId,
