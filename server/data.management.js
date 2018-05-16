@@ -76,6 +76,22 @@ router.delete('/files/:id', function (req, res) {
       })
 })
 
+router.get('/files/:id/publicurl', function (req, res) {
+    var id = req.params.id
+    var boName = getBucketKeyObjectName(id)
+
+    var tokenSession = new token(req.session);
+
+    var objects = new forgeSDK.ObjectsApi();
+    objects.createSignedResource(boName.bucketKey, boName.objectName, {}, {}, tokenSession.getOAuth(), tokenSession.getCredentials())
+      .then(function (data) {
+          res.json(data.body);
+      })
+      .catch(function (error) {
+          res.status(error.statusCode).end(error.statusMessage);
+      });
+})
+
 router.delete('/buckets/:id', function (req, res) {
     var tokenSession = new token(req.session)
 

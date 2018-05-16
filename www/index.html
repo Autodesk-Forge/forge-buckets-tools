@@ -10,20 +10,20 @@
     <!--type="text/css">-->
     <script language="JavaScript" src="/js/jquery.min.js"></script>
     <script language="JavaScript" src="/js/jquery.storageapi.min.js"></script>
-    <script language="JavaScript" src="/js/scripts.js"></script>
     <script src="/js/jstree.js"></script>
     <script src="/js/bootstrap.min.js"></script>
 
     <!-- for the viewer -->
-    <script src="https://developer.api.autodesk.com/viewingservice/v1/viewers/three.min.js?v=v2.16"></script>
+    <script src="https://developer.api.autodesk.com/modelderivative/v2/viewers/three.min.js?v=v4.2"></script>
     <!-- Last working version was 2.8
       <script src="https://developer.api.autodesk.com/viewingservice/v1/viewers/viewer3D.js?v=v2.10"></script>
       <link rel="stylesheet" href="https://developer.api.autodesk.com/viewingservice/v1/viewers/style.min.css?v=v2.10"/>
     ?v=v2.10 -->
-    <script src="https://developer.api.autodesk.com/viewingservice/v1/viewers/viewer3D.js?v=v2.16"></script>
-    <link rel="stylesheet" href="https://developer.api.autodesk.com/viewingservice/v1/viewers/style.min.css?v=v2.16"/>
+    <script src="https://developer.api.autodesk.com/modelderivative/v2/viewers/viewer3D.js?v=v4.2"></script>
+    <link rel="stylesheet" href="https://developer.api.autodesk.com/modelderivative/v2/viewers/style.css?v=v4.2"/>
 
     <link rel="stylesheet" href="/css/index.css"/>
+    <script language="JavaScript" src="/js/scripts.js"></script>
 </head>
 <body>
 <div class="container">
@@ -31,8 +31,19 @@
         <h3>OSS Manager - Basic Node.js Sample</h3>
 <!--        <input id="client_id" value="lHxPABu9A3zuGGrQbq3ZdMJeWPLgEx9P" style="width: 20%" />
         <input id="client_secret" value="G7ofD1U1tGK4FHrb" style="width: 20%" /> -->
-        <input id="client_id" value="<paste here app's Client ID>" style="width: 20%" />
-        <input id="client_secret" value="<paste here app's Client Secret>" style="width: 20%" />
+
+
+
+        <input id="client_id" value="A7wAASg92eGIF2l7vDPgCeDJ2ym95Vgj" style="width: 20%" />
+        <input id="client_secret" value="XGo6G1KjbaZDSMlA" style="width: 20%" />
+     
+
+        <!-- using staging credentials -->
+        <!--
+        <input id="client_id" value="RmsD8mpXgH5G9qRIcq8hZ4WLDAOI9hkM" style="width: 20%" />
+        <input id="client_secret" value="M7lNMbXtwVaYNTx9" style="width: 20%" />
+        -->
+
         <input id="scopes" value="data:read data:write data:create bucket:read bucket:delete bucket:update bucket:create" style="width: 50%" />
         <br />
         For a list of all the possible scopes that you can allow this app have a look at <a src="https://developer.autodesk.com/en/docs/oauth/v2/overview/scopes/">https://developer.autodesk.com/en/docs/oauth/v2/overview/scopes/</a>
