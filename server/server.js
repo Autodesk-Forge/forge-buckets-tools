@@ -50,7 +50,7 @@ var dm = require('./data.management');
 var md = require('./model.derivative');
 app.use('/', oauth); // redirect oauth API calls
 app.use('/dm', dm); // redirect our Data Management API calls
-app.use('/md', md); // redirect our Data Management API calls
+app.use('/md', md); // redirect our Model Derivative API calls
 
 
 module.exports = app;
