@@ -4,6 +4,16 @@ var MyVars = {
 
 $(document).ready(function () {
     //debugger;
+    // check URL params
+    var url = new URL(window.location.href);
+    var client_id = url.searchParams.get("client_id");
+    if (client_id) {
+        $("#client_id").val(client_id);
+    }
+    var client_secret = url.searchParams.get("client_secret");
+    if (client_secret) {
+        $("#client_secret").val(client_secret);
+    }
 
     $("#createBucket").click(function (evt) {
         // adamnagy_2017_06_14
