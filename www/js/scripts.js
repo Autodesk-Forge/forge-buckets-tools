@@ -699,7 +699,13 @@ function prepareFilesTree() {
             MyVars.selectedUrn = base64encode(data.node.id);
             MyVars.rootFileName = data.node.text
             if (MyVars.fileExtType === 'zip') {
-                MyVars.rootFileName = MyVars.rootFileName.slice(0, -4)
+                // mypart.iam.zip >> mypart.iam
+                MyVars.rootFileName = MyVars.rootFileName.slice(0, -4);
+                if (MyVars.rootFileName.indexOf('~')) {
+                    // maypart~asd.iam >> mypart.iam
+                    let parts = MyVars.rootFileName.split('~');
+                    MyVars.rootFileName = parts[0] + '.' + parts[1].split('.')[1];
+                }
             }
 
             var realExtType = getFileType(MyVars.rootFileName)
