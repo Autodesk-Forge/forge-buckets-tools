@@ -55,8 +55,8 @@ router.get('/user/token', function (req, res) {
               tokenSession.setOAuth(req);
 
               console.log('Token: ' + credentials.access_token);
+            res.setHeader('Access-Control-Allow-Origin', '*');
             res.json({ token: credentials.access_token, expires_in: credentials.expires_in });
-
           })
           .catch(function (error) {
             res.status(500).end(error.developerMessage);
