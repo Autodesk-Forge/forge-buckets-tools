@@ -701,7 +701,7 @@ function prepareFilesTree() {
             if (MyVars.fileExtType === 'zip') {
                 // mypart.iam.zip >> mypart.iam
                 MyVars.rootFileName = MyVars.rootFileName.slice(0, -4);
-                if (MyVars.rootFileName.indexOf('~')) {
+                if (MyVars.rootFileName.indexOf('~') > 0) {
                     // maypart~asd.iam >> mypart.iam
                     let parts = MyVars.rootFileName.split('~');
                     MyVars.rootFileName = parts[0] + '.' + parts[1].split('.')[1];
