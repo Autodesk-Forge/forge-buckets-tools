@@ -83,7 +83,7 @@ router.get('/files/:id/publicurl', function (req, res) {
     var tokenSession = new token(req.session);
 
     var objects = new forgeSDK.ObjectsApi();
-    objects.createSignedResource(boName.bucketKey, boName.objectName, {}, {}, tokenSession.getOAuth(), tokenSession.getCredentials())
+    objects.createSignedResource(boName.bucketKey, boName.objectName, {}, { 'access': 'readwrite' }, tokenSession.getOAuth(), tokenSession.getCredentials())
       .then(function (data) {
           res.json(data.body);
       })
