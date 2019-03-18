@@ -20,7 +20,12 @@
 var express = require('express');
 var cookieParser = require('cookie-parser');
 var session = require('express-session');
+var enforce = require('express-sslify');
 var app = express();
+
+// Use enforce.HTTPS({ trustProtoHeader: true }) in case you are behind
+// a load balancer (e.g. Heroku). See further comments below
+app.use(enforce.HTTPS({ trustProtoHeader: true }));
 
 // this session will be used to save the oAuth token
 app.use(cookieParser());

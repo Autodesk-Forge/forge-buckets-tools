@@ -8,9 +8,10 @@
     "ejs": "^2.6.1",
     "express": "^4.16.3",
     "express-session": "^1.15.6",
+    "express-sslify": "^1.2.0",
     "forge-apis": "^0.4.2",
     "formidable": "^1.2.1",
-    "morgan": "^1.9.0",
+    "morgan": "^1.9.1",
     "oauth": "^0.9.14",
     "request": "^2.87.0",
     "trim": "0.0.1"
