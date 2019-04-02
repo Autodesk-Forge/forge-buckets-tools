@@ -14,7 +14,8 @@
     "morgan": "^1.9.1",
     "oauth": "^0.9.14",
     "request": "^2.87.0",
-    "trim": "0.0.1"
+    "trim": "0.0.1",
+    "url": "^0.11.0"
   },
   "repository": {
     "type": "git",

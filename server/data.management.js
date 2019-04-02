@@ -11,6 +11,8 @@ var bodyParser = require('body-parser');
 var jsonParser = bodyParser.json();
 var rawParser = bodyParser.raw({limit: '10mb'});
 
+var url  = require('url');
+
 var formidable = require('formidable');
 var path = require('path');
 var fs = require('fs');
@@ -228,13 +230,28 @@ router.get('/treeNode', function (req, res) {
         // # stands for ROOT
         var buckets = new forgeSDK.BucketsApi();
 
-        buckets.getBuckets({}, tokenSession.getOAuth(), tokenSession.getCredentials())
+        var items = [];
+        var options = {};
+        var getBuckets = function (buckets, tokenSession, options, res, items) {
+            buckets.getBuckets(options, tokenSession.getOAuth(), tokenSession.getCredentials())
             .then(function (data) {
-                res.json(makeTree(data.body.items, true));
+                if (data.body.next) {
+                    items = items.concat(data.body.items);
+                    var query = url.parse(data.body.next, true).query;
+                    options.region = query.region;
+                    options.startAt = query.startAt;
+                    getBuckets(buckets, tokenSession, options, res, items);
+                } else {
+                    res.json(makeTree(items, true));
+                }
             })
             .catch(function (error) {
                 console.log(error);
+                res.status(error.statusCode).end(error.statusMessage);
             });
+        }
+
+        getBuckets(buckets, tokenSession, options, res, items);
     } else {
         var objects = new forgeSDK.ObjectsApi();
 
@@ -244,6 +261,7 @@ router.get('/treeNode', function (req, res) {
           })
           .catch(function (error) {
               console.log(error);
+              res.status(error.statusCode).end(error.statusMessage);
           });
 
     }
