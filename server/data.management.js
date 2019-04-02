@@ -236,8 +236,8 @@ router.get('/treeNode', function (req, res) {
             buckets.getBuckets(options, tokenSession.getOAuth(), tokenSession.getCredentials())
             .then(function (data) {
                 console.log('body.next = ' + data.body.next);
+                items = items.concat(data.body.items);
                 if (data.body.next) {
-                    items = items.concat(data.body.items);
                     var query = url.parse(data.body.next, true).query;
                     options.region = query.region;
                     options.startAt = query.startAt;
