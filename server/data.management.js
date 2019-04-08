@@ -231,7 +231,7 @@ router.get('/treeNode', function (req, res) {
         var buckets = new forgeSDK.BucketsApi();
 
         var items = [];
-        var options = {};
+        var options = { 'limit': 100 };
         var getBuckets = function (buckets, tokenSession, options, res, items) {
             buckets.getBuckets(options, tokenSession.getOAuth(), tokenSession.getCredentials())
             .then(function (data) {
@@ -256,15 +256,29 @@ router.get('/treeNode', function (req, res) {
     } else {
         var objects = new forgeSDK.ObjectsApi();
 
-        objects.getObjects(id, {}, tokenSession.getOAuth(), tokenSession.getCredentials())
-          .then(function (data) {
-              res.json(makeTree(data.body.items, false));
-          })
-          .catch(function (error) {
-              console.log(error);
-              res.status(error.statusCode).end(error.statusMessage);
-          });
+        var items = [];
+        var options = { 'limit': 100 };
+        var getObjects = function (objects, tokenSession, options, res, items) {
+            objects.getObjects(id, options, tokenSession.getOAuth(), tokenSession.getCredentials())
+            .then(function (data) {
+                console.log('body.next = ' + data.body.next);
+                items = items.concat(data.body.items);
+                if (data.body.next) {
+                    var query = url.parse(data.body.next, true).query;
+                    options.region = query.region;
+                    options.startAt = query.startAt;
+                    getObjects(objects, tokenSession, options, res, items);
+                } else {
+                    res.json(makeTree(items, false));
+                }
+            })
+            .catch(function (error) {
+                console.log(error);
+                res.status(error.statusCode).end(error.statusMessage);
+            });
+        }
 
+        getObjects(objects, tokenSession, options, res, items);
     }
 });
 
