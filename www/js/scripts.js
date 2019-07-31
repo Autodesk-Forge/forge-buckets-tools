@@ -1140,7 +1140,7 @@ function initializeViewer(urn) {
             //extensions: ['Autodesk.Viewing.webVR', 'Autodesk.Viewing.MarkupsGui'],
             //experimental: ['webVR_orbitModel']
         };
-        MyVars.viewer = new Autodesk.Viewing.Private.GuiViewer3D(viewerElement, config);
+        MyVars.viewer = new Autodesk.Viewing.GuiViewer3D(viewerElement, config);
         Autodesk.Viewing.Initializer(
             options,
             function () {
@@ -1179,26 +1179,16 @@ function loadDocument(viewer, documentId) {
         documentId,
         // onLoad
         function (doc) {
-            var geometryItems = [];
+            var geometryItems = doc.getRoot().search({ "role":"3d", "type":"geometry" });
+
             // Try 3d geometry first
-            geometryItems = Autodesk.Viewing.Document.getSubItemsWithProperties(doc.getRootItem(), {
-                'type': 'geometry',
-                'role': '3d'
-            }, true);
-
-            // If no 3d then try 2d
-            if (geometryItems.length < 1)
-                geometryItems = Autodesk.Viewing.Document.getSubItemsWithProperties(doc.getRootItem(), {
-                    'type': 'geometry',
-                    'role': '2d'
-                }, true);
-
-            if (geometryItems.length > 0) {
-                var path = doc.getViewablePath(geometryItems[0]);
-                //viewer.load(doc.getViewablePath(geometryItems[0]), null, null, null, doc.acmSessionId /*session for DM*/);
-                var options = {};
-                viewer.loadModel(path, options);
+            if (geometryItems.length < 1) {
+                geometryItems.push(doc.getRoot().getDefaultGeometry())
             }
+            
+            viewer.loadDocumentNode(doc, geometryItems[0]).then(i => {
+                // documented loaded, any action?
+            });
         },
         // onError
         function (errorMsg) {
