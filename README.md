@@ -32,8 +32,8 @@ This can come very handy when working with other services that require such **UR
 2. **On the left** side you'll find all the **OSS** related functionality: listing all your **buckets** and **files**, creating new **buckets**, uploading/downloading **files** \
 When translating to the **OBJ** format then what will be included in that file depends on the object selection in the **Hieararchy Tree** (if no object is selected then the whole file will be translated) - all other translations will translate the whole file no matter which objects are selected 
 
-3. **In the center** you'll find all the **Model Derivative** fiunctionality: showing the **hierarchy** of inside the file, providing **translations** available for the given file, and showing **meta data** for selected component \
-using the **Delete** button you can delete the current manifest of the file - it can be useful if the translation failed for a given file and you want to try it again (maybe in the meantime you uploaded a new version of the file)
+3. **In the center** you'll find all the **Model Derivative** functionality: showing the **hierarchy** of objects inside the file, providing **translations** available for the given file, and showing **meta data** for selected component \
+Using the **Delete** button you can delete the current manifest of the file - it can be useful if the translation failed for a given file and you want to try it again (maybe in the meantime you also uploaded a new version of the file under the same name so you do need a new translatoin)
 
 4. **On the right** side you'll find the **Forge Viewer** that will display the model in its default format: may that be **2D** or **3D**
 
@@ -95,12 +95,12 @@ Which executes **nodemon server.js --ignore www/**, where the **--ignore** param
 
 Documentation:
 
-- [Design Automation API](https://forge.autodesk.com/en/docs/design-automation/v3/developers_guide/overview/)
+- [Data Management API](https://forge.autodesk.com/en/docs/data/v2/developers_guide/overview/)
 
 Tutorials:
 
-- [Modify your models](https://learnforge.autodesk.io/#/tutorials/modifymodels)
-- [Step-by-Step Tutorials](https://forge.autodesk.com/en/docs/design-automation/v3/tutorials/)
+- [View your models](https://learnforge.autodesk.io/#/tutorials/viewmodels)
+- [Create an App-Managed Bucket and Upload a File](https://forge.autodesk.com/en/docs/data/v2/tutorials/app-managed-bucket/)
 
 Blogs:
 
