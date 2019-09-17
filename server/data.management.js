@@ -68,8 +68,7 @@ router.delete('/files/:id', function (req, res) {
     var boName = getBucketKeyObjectName(id)
 
     var objects = new forgeSDK.ObjectsApi();
-    var objectName = decodeURIComponent(boName.objectName)
-    objects.deleteObject(boName.bucketKey, objectName, tokenSession.getOAuth(), tokenSession.getCredentials())
+    objects.deleteObject(boName.bucketKey, boName.objectName, tokenSession.getOAuth(), tokenSession.getCredentials())
       .then(function (data) {
           res.json({ status: "success" })
       })
@@ -203,8 +202,8 @@ function getBucketKeyObjectName(objectId) {
     var bucketKeyValue = bucketKeyParams[bucketKeyParams.length - 1];
 
     var ret = {
-        bucketKey: bucketKeyValue,
-        objectName: objectNameValue
+        bucketKey: decodeURIComponent(bucketKeyValue),
+        objectName: decodeURIComponent(objectNameValue)
     };
 
     return ret;
