@@ -173,18 +173,20 @@ router.post('/chunks', rawParser, function (req, res) {
   var range = req.headers.range;
   var sessionId = req.headers.sessionid;
 
+  console.log("chunks with range " + range);
+
   // Upload the new file
   var objects = new forgeSDK.ObjectsApi();
   objects.uploadChunk(bucketName, fileName, data.length, range, sessionId, data, {}, tokenSession.getOAuth(), tokenSession.getCredentials())
     .then(function (objectData) {
-      console.log('uploadObject: succeeded');
+      console.log(`uploadChunk with range ${range}: succeeded`);
       res.status(objectData.statusCode).json(objectData.body);
     })
     .catch(function (error) {
-      console.log('uploadObject: failed');
-      try {
+      console.log(`uploadChunk with range ${range}: failed`);
+      if (error.statusCode && error.statusMessage) {
         res.status(error.statusCode).end(error.statusMessage);
-      } catch (Exception) {
+      } else {
         res.status(500).end("Unknown error");
       }
     });

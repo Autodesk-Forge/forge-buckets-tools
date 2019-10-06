@@ -1,5 +1,6 @@
 var MyVars = {
-    keepTrying: true
+    keepTrying: true,
+    ajaxCalls: []
 };
 
 $(document).ready(function () {
@@ -19,7 +20,7 @@ $(document).ready(function () {
         // adamnagy_2017_06_14
         var bucketName = $("#bucketName").val()
         var bucketType = $("#bucketType").val()
-        $.ajax ({
+        MyVars.ajaxCalls.push($.ajax({
             url: '/dm/buckets',
             type: 'POST',
             contentType: 'application/json',
@@ -28,48 +29,39 @@ $(document).ready(function () {
                 bucketName: bucketName,
                 bucketType: bucketType
             })
-        }).done (function (data) {
+        }).done(function (data) {
             console.log('Response' + data);
             showProgress("Bucket created", "success")
             $('#forgeFiles').jstree(true).refresh()
-        }).fail (function (xhr, ajaxOptions, thrownError) {
+        }).fail(function (xhr, ajaxOptions, thrownError) {
             console.log('Bucket creation failed!')
             showProgress("Could not create bucket", "failed")
-        }) ;
+        }));
     });
 
     function uuidv4() {
-        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
             var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
             return v.toString(16);
         });
     }
 
-    function uploadChunks (file){
-        var loaded = 0;
-        var step = 2 * 1024*1024; // 2 MB suggested
-        var total = file.size;  // total size of file
-        var start = 0;          // starting position
-        var reader = new FileReader();
-        var blob = file.slice(start,step); //a single chunk in starting of step size
-        reader.readAsArrayBuffer(blob);   // reading that chunk. when it read it, onload will be invoked
+    function updateAccessToken() {
+        return new Promise((resolve, reject) => {
+            get2LegToken(function (token) {
+                MyVars.token2Leg = token;
+                resolve();
+            })
+        })
+    }
 
-        var folderId = MyVars.selectedNode.id;
-        var fileName = file.name;
-        var sessionId = uuidv4();
+    function uploadChunk(fileName, folderId, sessionId, range, readerResult) {
+        return new Promise((resolve, reject) => {
+            console.log("uploadChunk [before]: sessionId = " + sessionId + ", range = " + range);
 
-        reader.onload = function(e){
-            //var d = {file:reader.result}
-            var currentStart = start
-            var currentEnd = start + e.loaded - 1;
-            start = currentEnd + 1
-            var res = reader.result
-            var range = 'bytes ' + currentStart + "-" + currentEnd + "/" + total
-
-            console.log("uploadChunks >> ajax: sessionId = " + sessionId + ", range = " + range);
-            $.ajax({
-                url:"/dm/chunks",
-                type:"POST",
+            MyVars.ajaxCalls.push($.ajax({
+                url: "/dm/chunks",
+                type: "POST",
                 headers: {
                     'Content-Type': 'application/octet-stream',
                     'x-file-name': fileName,
@@ -78,70 +70,114 @@ $(document).ready(function () {
                     'range': range
                 },
                 processData: false,
-                data:res                     // d is the chunk got by readAsBinaryString(...)
-            }).done(function(r){           // if 'd' is uploaded successfully then ->
-                //$('.record_reply_g').html(r);   //updating status in html view
-
-                loaded += step;                 //increasing loaded which is being used as start position for next chunk
-                //$('.upload_rpogress').html((loaded/total) * 100);
-
-                if(loaded <= total){            // if file is not completely uploaded
-                    blob = file.slice(loaded,loaded+step);  // getting next chunk
-                    reader.readAsArrayBuffer(blob);        //reading it through file reader which will call onload again. So it will happen recursively until file is completely uploaded.
-                } else {                       // if file is uploaded completely
-                    loaded = total;            // just changed loaded which could be used to show status.
-                    // We're finished
-                    console.log("uploadChunks >> done");
-                    showProgress("File uploaded", "success");
-                    $("#forgeUploadHidden").val('');
-                    $('#forgeFiles').jstree(true).refresh()
-                }
-            }).fail (function (error) {
-                console.log("uploadChunks >> fail");
-                showProgress("Upload failed", "failed");
-                $("#forgeUploadHidden").val('');
-            })
-        };
+                data: readerResult                     // d is the chunk got by readAsBinaryString(...)
+            }).done(function (response) {           // if 'd' is uploaded successfully then ->
+                console.log("uploadChunk [done]: sessionId = " + sessionId + ", range = " + range);
+                resolve(response)
+            }).fail(function (error) {
+                console.log("uploadChunk [fail]: sessionId = " + sessionId + ", range = " + range);
+                reject(error)
+            }));
+        })
     }
 
-    $("#forgeUploadHidden").change(function(evt) {
+    async function readChunk(file, start, end, total) {
+        return new Promise((resolve, reject) => {
+            var reader = new FileReader();
+            var blob = file.slice(start, end);
 
+            reader.onload = function (e) {
+                var currentStart = start
+                var currentEnd = start + e.loaded - 1;
+                var range = 'bytes ' + currentStart + "-" + currentEnd + "/" + total
+
+                resolve({ readerResult: reader.result, range: range });
+            };
+
+            reader.readAsArrayBuffer(blob);
+        });
+    }
+
+    async function uploadChunks(file) {
+        const retryMax = 3;
+        const step = 2 * 1024 * 1024; // 2 MB suggested
+        const total = file.size;    // total size of file
+        const folderId = MyVars.selectedNode.id;
+        const fileName = file.name;
+        const sessionId = uuidv4();
+        const stepsMax = Math.floor(total / step) + 1;
+        let stepsCount = 0;
+
+        let createPromise = function (start, end) {
+            console.log(`createPromise: ${start} - ${end}`);
+            return new Promise(async (resolve, reject) => {
+                let retryCount = 0;
+
+                console.log(`runPromise: ${start} - ${end}`);
+                let resRead = await readChunk(file, start, end, total);
+
+                while (true) {
+                    try {
+                        if (!MyVars.keepTrying) {
+                            reject(false);
+                            return;
+                        }
+
+                        console.log(`before uploadChunk: retryCount =  ${retryCount}`);
+                        let resUpload = await uploadChunk(fileName, folderId, sessionId, resRead.range, resRead.readerResult);
+                        showProgress("Uploading file... " + Math.ceil(++stepsCount / stepsMax * 100).toString() + "%", "inprogress");
+                        resolve(true);
+                        return;
+                    } catch {
+                        if (++retryCount > retryMax) {
+                            reject(false);
+                            return;
+                        }
+
+                        await updateAccessToken();
+                    }
+                }
+            });
+        }
+
+        MyVars.promises = [];
+        for (let start = 0; start < total; start += step) {
+            MyVars.promises.push(createPromise(start, start + step));
+        }
+
+        // Whether some failed or not, let's wait for all of them to return resolve or reject
+        Promise.allSettled(MyVars.promises)
+            .then((results) => {
+                let failed = results.find((item) => {
+                    return item.status === 'rejected';
+                })
+
+                if (failed) {
+                    if (MyVars.keepTrying) {
+                        console.log("uploadChunks >> fail");
+                        showProgress("Upload failed", "failed");
+                    } else {
+                        console.log("uploadChunks >> cancelled");
+                        showProgress("Upload cancelled", "failed");
+                    }
+                } else {
+                    console.log("uploadChunks >> done");
+                    showProgress("File uploaded", "success");
+                    $('#forgeFiles').jstree(true).refresh();
+                }
+                
+                $("#forgeUploadHidden").val('');
+                MyVars.keepTrying = true;
+            })
+    }
+
+    $("#forgeUploadHidden").change(function (evt) {
         showProgress("Uploading file... ", "inprogress");
 
         uploadChunks(this.files[0]);
-
-        return;
-
-
-        var data = new FormData () ;
-        var fileName = this.value;
-        var that = this
-
-        data.append (0, this.files[0]) ;
-        $.ajax ({
-            url: '/dm/files',
-            type: 'POST',
-            headers: { 'x-file-name': fileName, 'id': MyVars.selectedNode.id },
-            data: data,
-            cache: false,
-            processData: false, // Don't process the files
-            contentType: false, // Set content type to false as jQuery will tell the server its a query string request
-            complete: null
-        }).done (function (data) {
-            console.log('Uploaded file "' + data.fileName + '" with urn = ' + data.objectId);
-
-            showProgress("File uploaded", "success");
-            $('#forgeFiles').jstree(true).refresh()
-
-            // Clear selected files list
-            that.value = ""
-        }).fail (function (xhr, ajaxOptions, thrownError) {
-            console.log(fileName + ' upload failed!') ;
-            showProgress("Upload failed", "failed");
-        }) ;
     });
 
-    var upload = $("#uploadFile").click(function(evt) {
+    var upload = $("#uploadFile").click(function (evt) {
         evt.preventDefault();
         $("#forgeUploadHidden").trigger("click");
     });
@@ -149,10 +185,12 @@ $(document).ready(function () {
     var auth = $("#authenticate")
     auth.click(function () {
         // Get the tokens
-        get2LegToken(function(token) {
+        get2LegToken(function (token) {
             var auth = $("#authenticate");
 
             MyVars.token2Leg = token;
+            console.log('Returning new 3 legged token (User Authorization): ' + MyVars.token2Leg);
+            showProgress()
 
             auth.html('You\'re logged in');
 
@@ -161,12 +199,19 @@ $(document).ready(function () {
 
             // Download list of available file formats
             fillFormats();
+        }, function (err) {
+            showProgress(err.responseText, 'failed');
         });
     });
 
-    $('#progressInfo').click(function() {
+    $('#progressInfo').click(function () {
         MyVars.keepTrying = false;
-        showProgress("Translation stopped", 'failed');
+
+        // In case there are parallel downloads or any calls, just cancel them
+        MyVars.ajaxCalls.map((ajaxCall) => {
+            ajaxCall.abort();
+        });
+        MyVars.ajaxCalls = [];
     });
 });
 
@@ -193,21 +238,21 @@ function base64encode(str) {
 }
 
 function logoff() {
-    $.ajax({
+    MyVars.ajaxCalls.push($.ajax({
         url: '/user/logoff',
         success: function (oauthUrl) {
             location.href = oauthUrl;
         }
-    });
+    }));
 }
 
-function get2LegToken(callback) {
+function get2LegToken(onSuccess, onError) {
 
-    if (callback) {
+    if (onSuccess) {
         var client_id = $('#client_id').val();
         var client_secret = $('#client_secret').val();
         var scopes = $('#scopes').val();
-        $.ajax({
+        MyVars.ajaxCalls.push($.ajax({
             url: '/user/token',
             data: {
                 client_id: client_id,
@@ -215,15 +260,14 @@ function get2LegToken(callback) {
                 scopes: scopes
             },
             success: function (data) {
-                MyVars.token2Leg = data.token;
-                console.log('Returning new 3 legged token (User Authorization): ' + MyVars.token2Leg);
-                callback(data.token, data.expires_in);
-                showProgress()
+                onSuccess(data.token, data.expires_in);
             },
-            error: function(err, text) {
-                showProgress(err.responseText, 'failed');
+            error: function (err, text) {
+                if (onError) {
+                    onError(err);
+                }
             }
-        });
+        }));
     } else {
         console.log('Returning saved 3 legged token (User Authorization): ' + MyVars.token2Leg);
 
@@ -258,7 +302,7 @@ function downloadDerivative(urn, derUrn, fileName) {
         "&derUrn=" + derUrn +
         "&fileName=" + encodeURIComponent(fileName);
 
-    window.open(url,'_blank');
+    window.open(url, '_blank');
 }
 
 function getThumbnail(urn) {
@@ -267,7 +311,7 @@ function getThumbnail(urn) {
     var url = window.location.protocol + "//" + window.location.host +
         "/dm/thumbnail?urn=" + urn;
 
-    window.open(url,'_blank');
+    window.open(url, '_blank');
 }
 
 function isArraySame(arr1, arr2) {
@@ -324,18 +368,18 @@ function getDerivativeUrns(derivative, format, getThumbnail, objectIds) {
 function askForFileType(format, urn, guid, objectIds, rootFileName, fileExtType, onsuccess) {
     console.log("askForFileType " + format + " for urn=" + urn);
     var advancedOptions = {
-        'stl' : {
+        'stl': {
             "format": "binary",
             "exportColor": true,
             "exportFileStructure": "single" // "multiple" does not work
         },
-        'obj' : {
+        'obj': {
             "modelGuid": guid,
             "objectIds": objectIds
         }
     };
 
-    $.ajax({
+    MyVars.ajaxCalls.push($.ajax({
         url: '/md/export',
         type: 'POST',
         contentType: 'application/json',
@@ -358,16 +402,16 @@ function askForFileType(format, urn, guid, objectIds, rootFileName, fileExtType,
                 onsuccess(res);
             });
         }
-    }).fail(function(err) {
+    }).fail(function (err) {
         showProgress(err.responseText, "failed");
         console.log('/md/export call failed\n' + err.statusText);
-    });
+    }));
 }
 
 // We need this in order to get an OBJ file for the model
 function getMetadata(urn, onsuccess, onerror) {
     console.log("getMetadata for urn=" + urn);
-    $.ajax({
+    MyVars.ajaxCalls.push($.ajax({
         url: '/md/metadatas/' + urn,
         type: 'GET'
     }).done(function (data) {
@@ -380,25 +424,25 @@ function getMetadata(urn, onsuccess, onerror) {
         // delete the manifest
         var md0 = data.data.metadata[0];
         if (!md0) {
-            getManifest(urn, function () {});
+            getManifest(urn, function () { });
         } else {
             var guid = md0.guid;
             if (onsuccess !== undefined) {
                 onsuccess(guid);
             }
         }
-    }).fail(function(err) {
+    }).fail(function (err) {
         console.log('GET /md/metadata call failed\n' + err.statusText);
         onerror();
-    });
+    }));
 }
 
 function getHierarchy(urn, guid, onsuccess) {
     console.log("getHierarchy for urn=" + urn + " and guid=" + guid);
-    $.ajax({
+    MyVars.ajaxCalls.push($.ajax({
         url: '/md/hierarchy',
         type: 'GET',
-        data: {urn: urn, guid: guid}
+        data: { urn: urn, guid: guid }
     }).done(function (data) {
         console.log(data);
 
@@ -406,9 +450,9 @@ function getHierarchy(urn, guid, onsuccess) {
         if (data.result === 'accepted') {
             // Let's try again
             if (MyVars.keepTrying) {
-                window.setTimeout(function() {
-                        getHierarchy(urn, guid, onsuccess);
-                    }, 500
+                window.setTimeout(function () {
+                    getHierarchy(urn, guid, onsuccess);
+                }, 500
                 );
             } else {
                 MyVars.keepTrying = true;
@@ -421,31 +465,31 @@ function getHierarchy(urn, guid, onsuccess) {
         if (onsuccess !== undefined) {
             onsuccess(data);
         }
-    }).fail(function(err) {
+    }).fail(function (err) {
         console.log('GET /md/hierarchy call failed\n' + err.statusText);
-    });
+    }));
 }
 
 function getProperties(urn, guid, onsuccess) {
     console.log("getProperties for urn=" + urn + " and guid=" + guid);
-    $.ajax({
+    MyVars.ajaxCalls.push($.ajax({
         url: '/md/properties',
         type: 'GET',
-        data: {urn: urn, guid: guid}
+        data: { urn: urn, guid: guid }
     }).done(function (data) {
         console.log(data);
 
         if (onsuccess !== undefined) {
             onsuccess(data);
         }
-    }).fail(function(err) {
+    }).fail(function (err) {
         console.log('GET /api/properties call failed\n' + err.statusText);
-    });
+    }));
 }
 
 function getManifest(urn, onsuccess) {
     console.log("getManifest for urn=" + urn);
-    $.ajax({
+    MyVars.ajaxCalls.push($.ajax({
         url: '/md/manifests/' + urn,
         type: 'GET'
     }).done(function (data) {
@@ -457,9 +501,9 @@ function getManifest(urn, onsuccess) {
 
                 if (MyVars.keepTrying) {
                     // Keep calling until it's done
-                    window.setTimeout(function() {
-                            getManifest(urn, onsuccess);
-                        }, 500
+                    window.setTimeout(function () {
+                        getManifest(urn, onsuccess);
+                    }, 500
                     );
                 } else {
                     MyVars.keepTrying = true;
@@ -468,21 +512,21 @@ function getManifest(urn, onsuccess) {
                 showProgress("Translation completed", data.status);
                 onsuccess(data);
             }
-        // if it's a failed translation best thing is to delete it
+            // if it's a failed translation best thing is to delete it
         } else {
             showProgress("Translation failed", data.status);
             // Should we do automatic manifest deletion in case of a failed one?
             //delManifest(urn, function () {});
         }
-    }).fail(function(err) {
+    }).fail(function (err) {
         showProgress("Translation failed", 'failed');
         console.log('GET /api/manifest call failed\n' + err.statusText);
-    });
+    }));
 }
 
 function delManifest(urn, onsuccess) {
     console.log("delManifest for urn=" + urn);
-    $.ajax({
+    MyVars.ajaxCalls.push($.ajax({
         url: '/md/manifests/' + urn,
         type: 'DELETE'
     }).done(function (data) {
@@ -493,9 +537,9 @@ function delManifest(urn, onsuccess) {
                 showProgress("Manifest deleted", "success")
             }
         }
-    }).fail(function(err) {
+    }).fail(function (err) {
         console.log('DELETE /api/manifest call failed\n' + err.statusText);
-    });
+    }));
 }
 
 /////////////////////////////////////////////////////////////////
@@ -505,7 +549,7 @@ function delManifest(urn, onsuccess) {
 
 function getFormats(onsuccess) {
     console.log("getFormats");
-    $.ajax({
+    MyVars.ajaxCalls.push($.ajax({
         url: '/md/formats',
         type: 'GET'
     }).done(function (data) {
@@ -514,18 +558,18 @@ function getFormats(onsuccess) {
         if (onsuccess !== undefined) {
             onsuccess(data);
         }
-    }).fail(function(err) {
+    }).fail(function (err) {
         console.log('GET /md/formats call failed\n' + err.statusText);
-    });
+    }));
 }
 
 function fillFormats() {
-    getFormats(function(data) {
+    getFormats(function (data) {
         var forgeFormats = $("#forgeFormats");
         forgeFormats.data("forgeFormats", data);
 
         var download = $("#downloadExport");
-        download.click(function() {
+        download.click(function () {
             MyVars.keepTrying = true;
 
             var elem = $("#forgeHierarchy");
@@ -578,7 +622,7 @@ function fillFormats() {
 
                             // in case of obj format, also try to download the material
                             if (format === 'obj') {
-                                downloadDerivative(urn, derUrns[0].replace('.obj' , '.mtl'), fileName.replace('.obj', '.mtl'));
+                                downloadDerivative(urn, derUrns[0].replace('.obj', '.mtl'), fileName.replace('.obj', '.mtl'));
                             }
                         } else {
                             showProgress("Could not find specific OBJ file", "failed");
@@ -596,12 +640,12 @@ function fillFormats() {
         });
 
         var deleteManifest = $("#deleteManifest");
-        deleteManifest.click(function() {
+        deleteManifest.click(function () {
             var urn = MyVars.selectedUrn;
 
             cleanupViewer();
 
-            delManifest(urn, function() { });
+            delManifest(urn, function () { });
         });
     });
 }
@@ -616,7 +660,7 @@ function updateFormats(format) {
     // using this workaround for the time being
     //forgeFormats.append($("<option />").val('obj').text('obj'));
 
-    $.each(formats.formats, function(key, value) {
+    $.each(formats.formats, function (key, value) {
         if (key === 'obj' || value.indexOf(format) > -1) {
             forgeFormats.append($("<option />").val(key).text(key));
         }
@@ -751,7 +795,7 @@ function downloadFile(id) {
 function deleteFile(id) {
 
     console.log("Delete file = " + id);
-    $.ajax({
+    MyVars.ajaxCalls.push($.ajax({
         url: '/dm/files/' + encodeURIComponent(id),
         type: 'DELETE'
     }).done(function (data) {
@@ -760,14 +804,14 @@ function deleteFile(id) {
             $('#forgeFiles').jstree(true).refresh()
             showProgress("File deleted", "success")
         }
-    }).fail(function(err) {
+    }).fail(function (err) {
         console.log('DELETE /dm/files/ call failed\n' + err.statusText);
-    });
+    }));
 }
 
 function deleteBucket(id) {
     console.log("Delete bucket = " + id);
-    $.ajax({
+    MyVars.ajaxCalls.push($.ajax({
         url: '/dm/buckets/' + encodeURIComponent(id),
         type: 'DELETE'
     }).done(function (data) {
@@ -776,23 +820,23 @@ function deleteBucket(id) {
             $('#forgeFiles').jstree(true).refresh()
             showProgress("Bucket deleted", "success")
         }
-    }).fail(function(err) {
+    }).fail(function (err) {
         console.log('DELETE /dm/buckets/ call failed\n' + err.statusText);
-    });
+    }));
 }
 
 function getPublicUrl(id) {
-    $.ajax({
+    MyVars.ajaxCalls.push($.ajax({
         url: '/dm/files/' + encodeURIComponent(id) + '/publicurl',
         type: 'GET'
     }).done(function (data) {
         console.log(data);
         alert(data.signedUrl);
-    }).fail(function(err) {
+    }).fail(function (err) {
         console.log('DELETE /dm/buckets/ call failed\n' + err.statusText);
-    });
+    }));
 }
- 
+
 function filesTreeContextMenu(node, callback) {
     MyVars.selectedNode = node
     if (node.type === 'bucket') {
@@ -919,10 +963,10 @@ function prepareHierarchyTree(urn, guid, json) {
     $('#forgeHierarchy').jstree({
         'core': {
             'check_callback': true,
-            'themes': {"icons": true},
+            'themes': { "icons": true },
             'data': json.objects
         },
-        'checkbox' : {
+        'checkbox': {
             'tie_selection': false,
             "three_state": true,
             'whole_node': false
@@ -992,7 +1036,7 @@ function selectInHierarchyTree(objectIds) {
             // Make sure that it is visible for the user
             tree._open_to(id);
         }
-    } catch (ex) {}
+    } catch (ex) { }
 
     MyVars.selectingInHierarchyTree = false;
 }
@@ -1003,7 +1047,7 @@ function hierarchyTreeContextMenu(node, callback) {
     var menuItem = {
         "label": "Select in Fusion",
         "action": function (obj) {
-            var path = $("#forgeHierarchy").jstree().get_path(node,'/');
+            var path = $("#forgeHierarchy").jstree().get_path(node, '/');
             console.log(path);
 
             // Open this in the browser:
@@ -1032,7 +1076,7 @@ function hierarchyTreeContextMenu(node, callback) {
 function fetchProperties(urn, guid, onsuccess) {
     var props = $("#forgeProperties").data("forgeProperties");
     if (!props) {
-        getProperties(urn, guid, function(data) {
+        getProperties(urn, guid, function (data) {
             $("#forgeProperties").data("forgeProperties", data.data);
             onsuccess(data.data);
         })
@@ -1052,7 +1096,7 @@ function addSubProperties(node, props) {
                 "text": subPropId,
                 "type": "properties"
             });
-            var newNode = node.children[length-1];
+            var newNode = node.children[length - 1];
             addSubProperties(newNode, subProp);
         } else {
             node.children.push({
@@ -1076,14 +1120,14 @@ function addProperties(node, props) {
 
 function preparePropertyTree(urn, guid, objectId, props) {
     // Convert data to expected format
-    var data = { 'objectid' : objectId };
+    var data = { 'objectid': objectId };
     addProperties(data, props.collection);
 
     // init the tree
     $('#forgeProperties').jstree({
         'core': {
             'check_callback': true,
-            'themes': {"icons": true},
+            'themes': { "icons": true },
             'data': data.children
         },
         'types': {
@@ -1099,7 +1143,7 @@ function preparePropertyTree(urn, guid, objectId, props) {
         },
         "plugins": ["types", "sort"]
     }).bind("activate_node.jstree", function (evt, data) {
-       //
+        //
     });
 }
 
@@ -1129,7 +1173,7 @@ function initializeViewer(urn) {
     var options = {
         document: 'urn:' + urn,
         env: 'AutodeskProduction', //'AutodeskStaging', //'AutodeskProduction',
-        getAccessToken: get2LegToken // this works fine, but if I pass get2LegToken it only works the first time
+        getAccessToken: get2LegToken
     };
 
     if (MyVars.viewer) {
@@ -1161,7 +1205,7 @@ function addSelectionListener(viewer) {
             var dbId = event.dbIdArray[0];
             if (dbId) {
                 viewer.getProperties(dbId, function (props) {
-                   console.log(props.externalId);
+                    console.log(props.externalId);
                 });
             }
         });
@@ -1179,13 +1223,13 @@ function loadDocument(viewer, documentId) {
         documentId,
         // onLoad
         function (doc) {
-            var geometryItems = doc.getRoot().search({ "role":"3d", "type":"geometry" });
+            var geometryItems = doc.getRoot().search({ "role": "3d", "type": "geometry" });
 
             // Try 3d geometry first
             if (geometryItems.length < 1) {
                 geometryItems.push(doc.getRoot().getDefaultGeometry())
             }
-            
+
             viewer.loadDocumentNode(doc, geometryItems[0]).then(i => {
                 // documented loaded, any action?
             });
@@ -1254,7 +1298,7 @@ MyVars.getAllProps = async function () {
             });
         });
     };
-    
+
     var getPropsRec = async function (id, propNode) {
         var props = await getProps(id, propNode);
         handled.push(props.dbId);
@@ -1264,17 +1308,17 @@ MyVars.getAllProps = async function () {
             var prop = props.properties[key];
             // Avoid circular reference by checking if it's been
             // handled already
-            if (prop.type === 11 && ! handled.includes(prop.displayValue)) {
+            if (prop.type === 11 && !handled.includes(prop.displayValue)) {
                 await getPropsRec(prop.displayValue, propNode['child_' + props.dbId]);
             }
         };
     }
-    
+
     await getPropsRec(NOP_VIEWER.model.getRootId(), propTree);
     console.log(propTree);
 }
 
-function getActiveConfigurationProperties (viewer) {
+function getActiveConfigurationProperties(viewer) {
     var dbIds = viewer.getSelection();
 
     if (dbIds.length !== 1) {
@@ -1286,8 +1330,8 @@ function getActiveConfigurationProperties (viewer) {
         props.properties.forEach(prop => {
             if (prop.displayName === "Active Configuration") {
                 viewer.getProperties(prop.displayValue, confProps => {
-                    console.log(confProps);        
-                });  
+                    console.log(confProps);
+                });
 
                 return;
             }
@@ -1344,7 +1388,7 @@ PropertyInspectorExtension.prototype.createUI = function () {
         // show/hide docking panel
         panel.setVisible(!panel.isVisible());
     };
-    
+
     toolbarButtonShowDockingPanel.addClass('propertyInspectorToolbarButton');
     toolbarButtonShowDockingPanel.setToolTip('Property Inspector Panel');
 
@@ -1366,7 +1410,7 @@ Autodesk.Viewing.theExtensionManager.registerExtension('PropertyInspectorExtensi
 // Property Inspector Extension
 // *******************************************
 
-function PropertyInspectorPanel (viewer, container, id, title, options) {
+function PropertyInspectorPanel(viewer, container, id, title, options) {
     this.viewer = viewer;
     this.breadcrumbsItems = [];
     Autodesk.Viewing.UI.PropertyPanel.call(this, container, id, title, options);
@@ -1374,7 +1418,7 @@ function PropertyInspectorPanel (viewer, container, id, title, options) {
     this.showBreadcrumbs = function () {
         // Create it if not there yet
         if (!this.breadcrumbs) {
-            this.breadcrumbs = document.createElement('span');   
+            this.breadcrumbs = document.createElement('span');
             this.title.appendChild(this.breadcrumbs);
         } else {
             while (this.breadcrumbs.firstChild) {
@@ -1389,7 +1433,7 @@ function PropertyInspectorPanel (viewer, container, id, title, options) {
                 var text = document.createTextNode(' > ');
                 this.breadcrumbs.appendChild(text);
             }
-            
+
             var item = document.createElement('a');
             item.innerText = dbId;
             item.style.cursor = "pointer";
@@ -1443,12 +1487,12 @@ function PropertyInspectorPanel (viewer, container, id, title, options) {
             dbId = this.viewer.model.getRootId();
         }
 
-        this.breadcrumbsItems = [];   
+        this.breadcrumbsItems = [];
         this.showProperties(dbId);
     } // onSelectionChanged
 
     viewer.addEventListener(
-        Autodesk.Viewing.SELECTION_CHANGED_EVENT, 
+        Autodesk.Viewing.SELECTION_CHANGED_EVENT,
         this.onSelectionChanged.bind(this)
     );
 }; // PropertyInspectorPanel
