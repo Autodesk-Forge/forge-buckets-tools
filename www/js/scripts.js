@@ -845,6 +845,12 @@ function filesTreeContextMenu(node, callback) {
     MyVars.selectedNode = node
     if (node.type === 'bucket') {
         callback({
+            refreshTree: {
+                "label": "Refresh",
+                "action": function () {
+                    $('#forgeFiles').jstree(true).refresh()
+                }
+            },
             bucketDelete: {
                 "label": "Delete bucket",
                 "action": function (obj) {
