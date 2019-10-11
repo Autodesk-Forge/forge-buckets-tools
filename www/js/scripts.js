@@ -717,6 +717,10 @@ function prepareFilesTree() {
         // Clean up previous instance
         cleanupViewer();
 
+        // Just open the children of the node, so that it's easier
+        // to find the actual versions
+        $('#forgeFiles').jstree("open_node", data.node);
+
         // Disable the hierarchy related controls for the time being
         $("#forgeFormats").attr('disabled', 'disabled');
         $("#downloadExport").attr('disabled', 'disabled');
