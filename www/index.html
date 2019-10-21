@@ -25,23 +25,26 @@
     <div class="jumbotron">
         <h3>Buckets Tools</h3>
 
-
-        <input id="client_id" value="<client id>" style="width: 20%" />
-        <input id="client_secret" value="<client secret>" style="width: 20%" />
-     
-
-        <input id="scopes" value="data:read data:write data:create bucket:read bucket:delete bucket:update bucket:create" style="width: 50%" />
-        <br />
-        For a list of all the possible scopes that you can allow this app have a look at <a src="https://developer.autodesk.com/en/docs/oauth/v2/overview/scopes/">https://developer.autodesk.com/en/docs/oauth/v2/overview/scopes/</a>
         <div class="row">
-            <div class="col-sm-3" style="height:40px">
-
+            <div class="col-sm-4">
+                <input id="client_id" placeholder="Client ID" style="display: inline-block;" class="input-small form-control" />
+            </div>
+            <div class="col-sm-2">
+                <input id="client_secret" type="password" placeholder="Client Secret" style="display: inline-block;" class="input-small form-control" />
+            </div>
+            <div class="col-sm-4" style="display: none;">
+                <input id="scopes" style="display: inline-block;" class="input-small form-control" value="data:read data:write data:create bucket:read bucket:delete bucket:update bucket:create" />
+            </div>
+            <div class="col-sm-2">
                 <a href="#" id="authenticate" class="btn btn-warning btn-block">
                     <span class="glyphicon glyphicon-user"></span>
                     Log In
                 </a>
             </div>
         </div>
+        
+        <br />
+        For a list of all the possible scopes that you can allow this app have a look at <a src="https://developer.autodesk.com/en/docs/oauth/v2/overview/scopes/">https://developer.autodesk.com/en/docs/oauth/v2/overview/scopes/</a>
         <div class="row">
             <div class="col-sm-3" style="height:40px">
                 <div id="progressInfo" class="btn btn-info" style="font-size: 10pt ">
@@ -49,9 +52,6 @@
                     <span id="progressInfoIcon"></span>
                 </div>
             </div>
-        </div>
-        <div class="row">
-
         </div>
         <div class="row" style="background: white">
             <div class="col-sm-3 forgeTreeContainer">
