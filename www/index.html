@@ -68,7 +68,7 @@
                             <option value="persistent">persistent</option>
                         </select>
 
-                        <a id="createBucket" style="display: inline-block; margin-top: 5px;" class="btn btn-warning">
+                        <a id="createBucket" style="display: inline-block; margin-top: 5px;" class="btn btn-warning" disabled="disabled">
                             <span class="glyphicon glyphicon-plus"></span>
                             &nbsp;Create bucket
                         </a>
@@ -81,7 +81,14 @@
                 <div id="forgeFileOptions" class="forgeControlContainer" style="height:50px; overflow: hidden;">
 
                     <div style="display: inline-block">
-                        <select id="forgeFormats" class="input-small form-control" style="width:90px">
+                        <select id="forgeFormats" class="input-small form-control" style="width:70px">
+                        </select>
+                     </div>
+
+                     <div style="display: inline-block">
+                        <select id="derivativesRegion" class="input-small form-control" style="width:70px">
+                            <option value="US">US</option>
+                            <option value="EMEA">EMEA</option>
                         </select>
                      </div>
 

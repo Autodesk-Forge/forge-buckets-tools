@@ -40,6 +40,10 @@ router.get('/formats', function (req, res) {
 router.get('/manifests/:urn', function (req, res) {
     var derivatives = new forgeSDK.DerivativesApi();
 
+    // not used yet: you can reach the manifest stored in EMEA even if you 
+    // ask for it using the US endpoint 
+    var region = req.query.region;
+
     var tokenSession = new token(req.session);
 
     derivatives.getManifest(req.params.urn, {}, tokenSession.getOAuth(), tokenSession.getCredentials())
@@ -174,7 +178,7 @@ router.post('/export', jsonParser, function (req, res) {
     } : {"urn": req.body.urn});
     var output = {
         "destination": {
-            "region": "us"
+            "region": req.body.region
         },
         "formats": [item]
     };

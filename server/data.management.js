@@ -31,7 +31,7 @@ router.post('/buckets', jsonParser, function (req, res) {
     buckets.createBucket({
           "bucketKey": bucketName,
           "policyKey": bucketType
-    }, {}, tokenSession.getOAuth(), tokenSession.getCredentials())
+    }, { xAdsRegion: req.body.region }, tokenSession.getOAuth(), tokenSession.getCredentials())
       .then(function (data) {
             res.json(data.body)
       })
@@ -222,6 +222,8 @@ function getBucketKeyObjectName(objectId) {
 // our A360 account
 /////////////////////////////////////////////////////////////////
 router.get('/treeNode', function (req, res) {
+    var regions = ["EMEA", "US"];
+    var region = req.query.region;
     var id = decodeURIComponent(req.query.id);
     console.log("treeNode for " + id);
 
@@ -229,10 +231,14 @@ router.get('/treeNode', function (req, res) {
 
     if (id === '#') {
         // # stands for ROOT
+        res.json([
+            { id: "US", text: "US", type: "region", children: true },
+            { id: "EMEA", text: "EMEA", type: "region", children: true }
+        ]);
+    }
+    else if (regions.includes(id)) {
         var buckets = new forgeSDK.BucketsApi();
-
         var items = [];
-        var options = { 'limit': 100 };
         var getBuckets = function (buckets, tokenSession, options, res, items) {
             buckets.getBuckets(options, tokenSession.getOAuth(), tokenSession.getCredentials())
             .then(function (data) {
@@ -253,6 +259,7 @@ router.get('/treeNode', function (req, res) {
             });
         }
 
+        var options = { 'limit': 100, 'region': region };
         getBuckets(buckets, tokenSession, options, res, items);
     } else {
         var objects = new forgeSDK.ObjectsApi();
