@@ -64,7 +64,7 @@ Mac OSX/Linux (Terminal) / Windows (use <b>Node.js command line</b> from Start m
 
 Open the browser: [http://localhost:3000](http://localhost:3000).
 
-**Important:** do not use **npm start** locally, this is intended for PRODUCTION only with HTTPS (SSL) secure cookies.
+**Important:** when testing locally, comment out the `app.use(enforce.HTTPS({ trustProtoHeader: true }));` line in the `server.js` file before running the app, since we won't be using **HTTPS**, only **HTTP**
 
 ## Deployment
 
