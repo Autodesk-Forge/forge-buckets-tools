@@ -1,16 +1,18 @@
 {
-  "name": "derivative-service-node.js-sample",
+  "name": "buckets-tools",
   "version": "2.0.0",
   "description": "A sample that shows how to use the Model Derivative API.",
   "dependencies": {
     "body-parser": "^1.18.3",
     "cookie-parser": "^1.4.5",
     "ejs": "^2.7.4",
+    "electron-squirrel-startup": "^1.0.0",
     "express": "^4.16.3",
     "express-session": "^1.17.1",
     "express-sslify": "^1.2.0",
     "forge-apis": "^0.7.3",
     "formidable": "^1.2.2",
+    "jquery": "^3.5.1",
     "morgan": "^1.10.0",
     "oauth": "^0.9.14",
     "request": "^2.88.2",
@@ -21,11 +23,50 @@
     "type": "git",
     "url": "git://github.com/developer-autodesk/model.derivative-nodejs-sample"
   },
+  "main": "start.js",
   "scripts": {
-    "start": "NODE_ENV=production node start.js",
+    "start": "electron-forge start",
     "dev": "node start.js",
-    "nodemon": "nodemon start.js --ignore www/"
+    "nodemon": "nodemon start.js --ignore www/",
+    "electron": "electron .",
+    "package": "electron-forge package",
+    "make": "electron-forge make"
   },
   "author": "Forge Partner Development",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "@electron-forge/cli": "^6.0.0-beta.54",
+    "@electron-forge/maker-deb": "^6.0.0-beta.54",
+    "@electron-forge/maker-rpm": "^6.0.0-beta.54",
+    "@electron-forge/maker-squirrel": "^6.0.0-beta.54",
+    "@electron-forge/maker-zip": "^6.0.0-beta.54",
+    "electron": "^11.2.2"
+  },
+  "config": {
+    "forge": {
+      "packagerConfig": {},
+      "makers": [
+        {
+          "name": "@electron-forge/maker-squirrel",
+          "config": {
+            "name": "derivative_service_node.js_sample"
+          }
+        },
+        {
+          "name": "@electron-forge/maker-zip",
+          "platforms": [
+            "darwin"
+          ]
+        },
+        {
+          "name": "@electron-forge/maker-deb",
+          "config": {}
+        },
+        {
+          "name": "@electron-forge/maker-rpm",
+          "config": {}
+        }
+      ]
+    }
+  }
 }

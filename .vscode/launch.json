@@ -9,6 +9,25 @@
       "request": "launch",
       "name": "Launch Program",
       "program": "${workspaceFolder}/start.js"
+    },
+    {
+      "name": "Launch Electron",
+      "type": "node",
+      "program": "${workspaceRoot}/start.js", 
+      "request": "launch",
+      "stopOnEntry": false,
+      "args": [], 
+      "cwd": "${workspaceRoot}",
+      "runtimeExecutable": "${workspaceRoot}/node_modules/.bin/electron"
+    },
+    {
+      "name": "Launch Electron New",
+      "type": "node",
+      "request": "launch",
+      "stopOnEntry": false,
+      "args": ["run", "start"], 
+      "cwd": "${workspaceRoot}",
+      "runtimeExecutable": "npm"
     }
   ]
 }

@@ -8,10 +8,23 @@
     <link rel="stylesheet" href="/css/bootstrap.min.css">
     <!--<link rel="stylesheet" href="https://developer-stg.api.autodesk.com/viewingservice/v1/viewers/style.css"-->
     <!--type="text/css">-->
-    <script language="JavaScript" src="/js/jquery.min.js"></script>
-    <script language="JavaScript" src="/js/jquery.storageapi.min.js"></script>
-    <script src="/js/jstree.js"></script>
-    <script src="/js/bootstrap.min.js"></script>
+
+    <!--
+    <script>window.$ = window.jQuery = require('./www/js/jquery.min.js');</script>
+-->
+
+
+    <!-- Insert this line above script imports  -->
+    <script>if (typeof module === 'object') {window.module = module; module = undefined;} </script>
+
+        <script language="JavaScript" src="/js/jquery.min.js"></script>
+        <script language="JavaScript" src="/js/jquery.storageapi.min.js"></script>
+        <script src="/js/jstree.js"></script>
+        <script src="/js/bootstrap.min.js"></script>
+
+    <!-- Insert this line after script imports -->
+    <script>if (window.module) module = window.module;</script>     
+        
 
     <!-- for the viewer -->
     <script src="https://developer.api.autodesk.com/modelderivative/v2/viewers/7.*/viewer3D.js"></script>

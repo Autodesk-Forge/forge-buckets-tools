@@ -25,7 +25,7 @@ var app = express();
 
 // Use enforce.HTTPS({ trustProtoHeader: true }) in case you are behind
 // a load balancer (e.g. Heroku). See further comments below
-app.use(enforce.HTTPS({ trustProtoHeader: true }));
+//app.use(enforce.HTTPS({ trustProtoHeader: true }));
 
 // this session will be used to save the oAuth token
 app.use(cookieParser());
@@ -51,9 +51,11 @@ app.set('port', process.env.PORT || 3000); // main port
 
 // prepare our API endpoint routing
 var oauth = require('./oauth');
+var userData = require('./user.data');
 var dm = require('./data.management');
 var md = require('./model.derivative');
 app.use('/', oauth); // redirect oauth API calls
+app.use('/', userData); // redirect user data calls
 app.use('/dm', dm); // redirect our Data Management API calls
 app.use('/md', md); // redirect our Data Management API calls
 

@@ -3,8 +3,11 @@
     padding-bottom: 30px;
     padding-left: 30px;
     padding-right: 30px;
-    margin-bottom: 20px;
-    margin-top: 20px;
+}
+
+.container {
+    width: 100%;
+    padding: 0px;
 }
 
 .forgeViewer {

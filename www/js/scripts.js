@@ -1,9 +1,9 @@
 var MyVars = {
   keepTrying: true,
-  ajaxCalls: []
+  ajaxCalls: [],
 };
 
-$(document).ready(function() {
+$(document).ready(function () {
   //debugger;
   // check URL params
   var url = new URL(window.location.href);
@@ -16,7 +16,19 @@ $(document).ready(function() {
     $("#client_secret").val(client_secret);
   }
 
-  $("#createBucket").click(function(evt) {
+  $.ajax({
+    url: "/userdata",
+  })
+    .done(function (data) {
+      console.log(data);
+      $("#client_id").val(data.clientId);
+      $("#client_secret").val(data.clientSecret);
+    })
+    .fail(function (xhr, ajaxOptions, thrownError) {
+      console.log("No user data");
+    });
+
+  $("#createBucket").click(function (evt) {
     // adamnagy_2017_06_14
     var bucketName = $("#bucketName").val();
     var bucketType = $("#bucketType").val();
@@ -29,17 +41,15 @@ $(document).ready(function() {
         data: JSON.stringify({
           bucketName: bucketName,
           bucketType: bucketType,
-          region: getOssRegion(MyVars.selectedNode)
-        })
+          region: getOssRegion(MyVars.selectedNode),
+        }),
       })
-        .done(function(data) {
+        .done(function (data) {
           console.log("Response" + data);
           showProgress("Bucket created", "success");
-          $("#forgeFiles")
-            .jstree(true)
-            .refresh();
+          $("#forgeFiles").jstree(true).refresh();
         })
-        .fail(function(xhr, ajaxOptions, thrownError) {
+        .fail(function (xhr, ajaxOptions, thrownError) {
           console.log("Bucket creation failed!");
           showProgress("Could not create bucket", "failed");
         })
@@ -47,16 +57,19 @@ $(document).ready(function() {
   });
 
   function uuidv4() {
-    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function(c) {
-      var r = (Math.random() * 16) | 0,
-        v = c == "x" ? r : (r & 0x3) | 0x8;
-      return v.toString(16);
-    });
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
+      /[xy]/g,
+      function (c) {
+        var r = (Math.random() * 16) | 0,
+          v = c == "x" ? r : (r & 0x3) | 0x8;
+        return v.toString(16);
+      }
+    );
   }
 
   function updateAccessToken() {
     return new Promise((resolve, reject) => {
-      get2LegToken(function(token) {
+      get2LegToken(function (token) {
         MyVars.token2Leg = token;
         resolve();
       });
@@ -78,12 +91,12 @@ $(document).ready(function() {
             "x-file-name": fileName,
             id: folderId,
             sessionid: sessionId,
-            range: range
+            range: range,
           },
           processData: false,
-          data: readerResult // d is the chunk got by readAsBinaryString(...)
+          data: readerResult, // d is the chunk got by readAsBinaryString(...)
         })
-          .done(function(response) {
+          .done(function (response) {
             // if 'd' is uploaded successfully then ->
             console.log(
               "uploadChunk [done]: sessionId = " +
@@ -93,7 +106,7 @@ $(document).ready(function() {
             );
             resolve(response);
           })
-          .fail(function(error) {
+          .fail(function (error) {
             console.log(
               "uploadChunk [fail]: sessionId = " +
                 sessionId +
@@ -111,7 +124,7 @@ $(document).ready(function() {
       var reader = new FileReader();
       var blob = file.slice(start, end);
 
-      reader.onload = function(e) {
+      reader.onload = function (e) {
         var currentStart = start;
         var currentEnd = start + e.loaded - 1;
         var range = "bytes " + currentStart + "-" + currentEnd + "/" + total;
@@ -133,7 +146,7 @@ $(document).ready(function() {
     const stepsMax = Math.floor(total / step) + 1;
     let stepsCount = 0;
 
-    let createPromise = function(start, end) {
+    let createPromise = function (start, end) {
       console.log(`createPromise: ${start} - ${end}`);
       return new Promise(async (resolve, reject) => {
         let retryCount = 0;
@@ -182,8 +195,8 @@ $(document).ready(function() {
     }
 
     // Whether some failed or not, let's wait for all of them to return resolve or reject
-    Promise.allSettled(MyVars.promises).then(results => {
-      let failed = results.find(item => {
+    Promise.allSettled(MyVars.promises).then((results) => {
+      let failed = results.find((item) => {
         return item.status === "rejected";
       });
 
@@ -198,9 +211,7 @@ $(document).ready(function() {
       } else {
         console.log("uploadChunks >> done");
         showProgress("File uploaded", "success");
-        $("#forgeFiles")
-          .jstree(true)
-          .refresh();
+        $("#forgeFiles").jstree(true).refresh();
       }
 
       $("#forgeUploadHidden").val("");
@@ -208,22 +219,22 @@ $(document).ready(function() {
     });
   }
 
-  $("#forgeUploadHidden").change(function(evt) {
+  $("#forgeUploadHidden").change(function (evt) {
     showProgress("Uploading file... ", "inprogress");
 
     uploadChunks(this.files[0]);
   });
 
-  var upload = $("#uploadFile").click(function(evt) {
+  var upload = $("#uploadFile").click(function (evt) {
     evt.preventDefault();
     $("#forgeUploadHidden").trigger("click");
   });
 
   var auth = $("#authenticate");
-  auth.click(function() {
+  auth.click(function () {
     // Get the tokens
     get2LegToken(
-      function(token) {
+      function (token) {
         var auth = $("#authenticate");
 
         MyVars.token2Leg = token;
@@ -235,23 +246,41 @@ $(document).ready(function() {
 
         auth.html("You're logged in");
 
+        // Save user credentials
+        $.ajax({
+          url: "/userdata",
+          type: "POST",
+          contentType: "application/json",
+          dataType: "json",
+          data: JSON.stringify({
+            clientId: $("#client_id").val(),
+            clientSecret: $("#client_secret").val(),
+          }),
+        })
+          .done(function (data) {
+            console.log(data);
+          })
+          .fail(function (xhr, ajaxOptions, thrownError) {
+            console.log("Could not save user data");
+          });
+
         // Fill the tree with A360 items
         prepareFilesTree();
 
         // Download list of available file formats
         fillFormats();
       },
-      function(err) {
+      function (err) {
         showProgress(err.responseText, "failed");
       }
     );
   });
 
-  $("#progressInfo").click(function() {
+  $("#progressInfo").click(function () {
     MyVars.keepTrying = false;
 
     // In case there are parallel downloads or any calls, just cancel them
-    MyVars.ajaxCalls.map(ajaxCall => {
+    MyVars.ajaxCalls.map((ajaxCall) => {
       ajaxCall.abort();
     });
     MyVars.ajaxCalls = [];
@@ -273,10 +302,7 @@ function base64encode(str) {
   // Have a look at this page for info on "Unpadded 'base64url' for "named information" URI's (RFC 6920)"
   // which is the format being used by the Model Derivative API
   // https://en.wikipedia.org/wiki/Base64#Variants_summary_table
-  var ret2 = ret
-    .replace(/=/g, "")
-    .replace(/[/]/g, "_")
-    .replace(/[+]/g, "-");
+  var ret2 = ret.replace(/=/g, "").replace(/[/]/g, "_").replace(/[+]/g, "-");
 
   console.log("base64encode result = " + ret2);
 
@@ -287,9 +313,9 @@ function logoff() {
   MyVars.ajaxCalls.push(
     $.ajax({
       url: "/user/logoff",
-      success: function(oauthUrl) {
+      success: function (oauthUrl) {
         location.href = oauthUrl;
-      }
+      },
     })
   );
 }
@@ -305,16 +331,16 @@ function get2LegToken(onSuccess, onError) {
         data: {
           client_id: client_id,
           client_secret: client_secret,
-          scopes: scopes
+          scopes: scopes,
         },
-        success: function(data) {
+        success: function (data) {
           onSuccess(data.token, data.expires_in);
         },
-        error: function(err, text) {
+        error: function (err, text) {
           if (onError) {
             onError(err);
           }
-        }
+        },
       })
     );
   } else {
@@ -461,12 +487,12 @@ function askForFileType(
     stl: {
       format: "binary",
       exportColor: true,
-      exportFileStructure: "single" // "multiple" does not work
+      exportFileStructure: "single", // "multiple" does not work
     },
     obj: {
       modelGuid: guid,
-      objectIds: objectIds
-    }
+      objectIds: objectIds,
+    },
   };
 
   MyVars.ajaxCalls.push(
@@ -481,10 +507,10 @@ function askForFileType(
         advanced: advancedOptions[format],
         rootFileName: rootFileName,
         fileExtType: fileExtType,
-        region: getDerivativesRegion()
-      })
+        region: getDerivativesRegion(),
+      }),
     })
-      .done(function(data) {
+      .done(function (data) {
         console.log(data);
 
         if (
@@ -492,12 +518,12 @@ function askForFileType(
           data.result === "created"
         ) {
           // already submitted data
-          getManifest(urn, function(res) {
+          getManifest(urn, function (res) {
             onsuccess(res);
           });
         }
       })
-      .fail(function(err) {
+      .fail(function (err) {
         showProgress(err.responseText, "failed");
         console.log("/md/export call failed\n" + err.statusText);
       })
@@ -510,9 +536,9 @@ function getMetadata(urn, onsuccess, onerror) {
   MyVars.ajaxCalls.push(
     $.ajax({
       url: "/md/metadatas/" + urn,
-      type: "GET"
+      type: "GET",
     })
-      .done(function(data) {
+      .done(function (data) {
         console.log(data);
 
         // Get first model guid
@@ -522,7 +548,7 @@ function getMetadata(urn, onsuccess, onerror) {
         // delete the manifest
         var md0 = data.data.metadata[0];
         if (!md0) {
-          getManifest(urn, function() {});
+          getManifest(urn, function () {});
         } else {
           var guid = md0.guid;
           if (onsuccess !== undefined) {
@@ -530,7 +556,7 @@ function getMetadata(urn, onsuccess, onerror) {
           }
         }
       })
-      .fail(function(err) {
+      .fail(function (err) {
         console.log("GET /md/metadata call failed\n" + err.statusText);
         onerror();
       })
@@ -543,16 +569,16 @@ function getHierarchy(urn, guid, onsuccess) {
     $.ajax({
       url: "/md/hierarchy",
       type: "GET",
-      data: { urn: urn, guid: guid }
+      data: { urn: urn, guid: guid },
     })
-      .done(function(data) {
+      .done(function (data) {
         console.log(data);
 
         // If it's 'accepted' then it's not ready yet
         if (data.result === "accepted") {
           // Let's try again
           if (MyVars.keepTrying) {
-            window.setTimeout(function() {
+            window.setTimeout(function () {
               getHierarchy(urn, guid, onsuccess);
             }, 500);
           } else {
@@ -567,7 +593,7 @@ function getHierarchy(urn, guid, onsuccess) {
           onsuccess(data);
         }
       })
-      .fail(function(err) {
+      .fail(function (err) {
         console.log("GET /md/hierarchy call failed\n" + err.statusText);
       })
   );
@@ -579,16 +605,16 @@ function getProperties(urn, guid, onsuccess) {
     $.ajax({
       url: "/md/properties",
       type: "GET",
-      data: { urn: urn, guid: guid }
+      data: { urn: urn, guid: guid },
     })
-      .done(function(data) {
+      .done(function (data) {
         console.log(data);
 
         if (onsuccess !== undefined) {
           onsuccess(data);
         }
       })
-      .fail(function(err) {
+      .fail(function (err) {
         console.log("GET /api/properties call failed\n" + err.statusText);
       })
   );
@@ -597,14 +623,14 @@ function getProperties(urn, guid, onsuccess) {
 function getManifest(urn, onsuccess) {
   console.log("getManifest for urn=" + urn);
   // region is not used on the server side just yet:
-  // you can reach the manifest stored in EMEA even if you 
-  // ask for it using the US endpoint 
+  // you can reach the manifest stored in EMEA even if you
+  // ask for it using the US endpoint
   MyVars.ajaxCalls.push(
     $.ajax({
       url: "/md/manifests/" + urn + "?region=" + getDerivativesRegion(),
-      type: "GET"
+      type: "GET",
     })
-      .done(function(data) {
+      .done(function (data) {
         console.log(data);
 
         if (data.status !== "failed") {
@@ -613,7 +639,7 @@ function getManifest(urn, onsuccess) {
 
             if (MyVars.keepTrying) {
               // Keep calling until it's done
-              window.setTimeout(function() {
+              window.setTimeout(function () {
                 getManifest(urn, onsuccess);
               }, 500);
             } else {
@@ -630,7 +656,7 @@ function getManifest(urn, onsuccess) {
           //delManifest(urn, function () {});
         }
       })
-      .fail(function(err) {
+      .fail(function (err) {
         showProgress("Translation failed", "failed");
         console.log("GET /api/manifest call failed\n" + err.statusText);
       })
@@ -642,9 +668,9 @@ function delManifest(urn, onsuccess) {
   MyVars.ajaxCalls.push(
     $.ajax({
       url: "/md/manifests/" + urn,
-      type: "DELETE"
+      type: "DELETE",
     })
-      .done(function(data) {
+      .done(function (data) {
         console.log(data);
         if (data.result === "success") {
           if (onsuccess !== undefined) {
@@ -653,7 +679,7 @@ function delManifest(urn, onsuccess) {
           }
         }
       })
-      .fail(function(err) {
+      .fail(function (err) {
         console.log("DELETE /api/manifest call failed\n" + err.statusText);
       })
   );
@@ -669,28 +695,28 @@ function getFormats(onsuccess) {
   MyVars.ajaxCalls.push(
     $.ajax({
       url: "/md/formats",
-      type: "GET"
+      type: "GET",
     })
-      .done(function(data) {
+      .done(function (data) {
         console.log(data);
 
         if (onsuccess !== undefined) {
           onsuccess(data);
         }
       })
-      .fail(function(err) {
+      .fail(function (err) {
         console.log("GET /md/formats call failed\n" + err.statusText);
       })
   );
 }
 
 function fillFormats() {
-  getFormats(function(data) {
+  getFormats(function (data) {
     var forgeFormats = $("#forgeFormats");
     forgeFormats.data("forgeFormats", data);
 
     var download = $("#downloadExport");
-    download.click(function() {
+    download.click(function () {
       MyVars.keepTrying = true;
 
       var elem = $("#forgeHierarchy");
@@ -713,7 +739,7 @@ function fillFormats() {
         if (nodeIds.length) {
           objectIds = [];
 
-          $.each(nodeIds, function(index, value) {
+          $.each(nodeIds, function (index, value) {
             objectIds.push(parseInt(value, 10));
           });
         }
@@ -727,7 +753,7 @@ function fillFormats() {
         objectIds,
         rootFileName,
         MyVars.fileExtType,
-        function(res) {
+        function (res) {
           if (format === "thumbnail") {
             getThumbnail(urn);
 
@@ -776,12 +802,12 @@ function fillFormats() {
     });
 
     var deleteManifest = $("#deleteManifest");
-    deleteManifest.click(function() {
+    deleteManifest.click(function () {
       var urn = MyVars.selectedUrn;
 
       cleanupViewer();
 
-      delManifest(urn, function() {});
+      delManifest(urn, function () {});
     });
   });
 }
@@ -795,13 +821,9 @@ function updateFormats(format) {
   // using this workaround for the time being
   //forgeFormats.append($("<option />").val('obj').text('obj'));
 
-  $.each(formats.formats, function(key, value) {
+  $.each(formats.formats, function (key, value) {
     if (key === "obj" || value.indexOf(format) > -1) {
-      forgeFormats.append(
-        $("<option />")
-          .val(key)
-          .text(key)
-      );
+      forgeFormats.append($("<option />").val(key).text(key));
     }
   });
 }
@@ -819,15 +841,14 @@ function getFileType(fileName) {
 
 // EMEA or US
 function getOssRegion(node) {
-  if (node.parents.length < 2)
-    return node.id;
+  if (node.parents.length < 2) return node.id;
 
   return node.parents[node.parents.length - 2];
 }
 
 // EMEA or US
 function getDerivativesRegion() {
-  return $("#derivativesRegion").val()
+  return $("#derivativesRegion").val();
 }
 
 function prepareFilesTree() {
@@ -840,38 +861,38 @@ function prepareFilesTree() {
         data: {
           url: "/dm/treeNode",
           dataType: "json",
-          data: function(node) {
+          data: function (node) {
             return {
               id: node.id,
-              region: getOssRegion(node)
+              region: getOssRegion(node),
             };
-          }
-        }
+          },
+        },
       },
       ui: {
-        select_limit: 1
+        select_limit: 1,
       },
       types: {
         default: {
-          icon: "glyphicon glyphicon-cloud"
+          icon: "glyphicon glyphicon-cloud",
         },
         region: {
-          icon: "glyphicon glyphicon-globe"
+          icon: "glyphicon glyphicon-globe",
         },
         bucket: {
-          icon: "glyphicon glyphicon-folder-open"
+          icon: "glyphicon glyphicon-folder-open",
         },
         file: {
-          icon: "glyphicon glyphicon-file"
-        }
+          icon: "glyphicon glyphicon-file",
+        },
       },
       plugins: ["types", "contextmenu"], // let's not use sort or state: , "state" and "sort"],
       contextmenu: {
         select_node: true,
-        items: filesTreeContextMenu
-      }
+        items: filesTreeContextMenu,
+      },
     })
-    .bind("select_node.jstree", function(evt, data) {
+    .bind("select_node.jstree", function (evt, data) {
       // Clean up previous instance
       cleanupViewer();
 
@@ -898,14 +919,10 @@ function prepareFilesTree() {
         MyVars.keepTrying = true;
 
         // Clear hierarchy tree
-        $("#forgeHierarchy")
-          .empty()
-          .jstree("destroy");
+        $("#forgeHierarchy").empty().jstree("destroy");
 
         // Clear properties tree
-        $("#forgeProperties")
-          .empty()
-          .jstree("destroy");
+        $("#forgeProperties").empty().jstree("destroy");
 
         // Delete cached data
         $("#forgeProperties").data("forgeProperties", null);
@@ -947,12 +964,8 @@ function prepareFilesTree() {
 
         // And clear trees to avoid confusion thinking that the
         // data belongs to the clicked model
-        $("#forgeHierarchy")
-          .empty()
-          .jstree("destroy");
-        $("#forgeProperties")
-          .empty()
-          .jstree("destroy");
+        $("#forgeHierarchy").empty().jstree("destroy");
+        $("#forgeProperties").empty().jstree("destroy");
       }
     });
 }
@@ -975,18 +988,16 @@ function deleteFile(id) {
   MyVars.ajaxCalls.push(
     $.ajax({
       url: "/dm/files/" + encodeURIComponent(id),
-      type: "DELETE"
+      type: "DELETE",
     })
-      .done(function(data) {
+      .done(function (data) {
         console.log(data);
         if (data.status === "success") {
-          $("#forgeFiles")
-            .jstree(true)
-            .refresh();
+          $("#forgeFiles").jstree(true).refresh();
           showProgress("File deleted", "success");
         }
       })
-      .fail(function(err) {
+      .fail(function (err) {
         console.log("DELETE /dm/files/ call failed\n" + err.statusText);
       })
   );
@@ -997,18 +1008,16 @@ function deleteBucket(id) {
   MyVars.ajaxCalls.push(
     $.ajax({
       url: "/dm/buckets/" + encodeURIComponent(id),
-      type: "DELETE"
+      type: "DELETE",
     })
-      .done(function(data) {
+      .done(function (data) {
         console.log(data);
         if (data.status === "success") {
-          $("#forgeFiles")
-            .jstree(true)
-            .refresh();
+          $("#forgeFiles").jstree(true).refresh();
           showProgress("Bucket deleted", "success");
         }
       })
-      .fail(function(err) {
+      .fail(function (err) {
         console.log("DELETE /dm/buckets/ call failed\n" + err.statusText);
       })
   );
@@ -1018,13 +1027,13 @@ function getPublicUrl(id) {
   MyVars.ajaxCalls.push(
     $.ajax({
       url: "/dm/files/" + encodeURIComponent(id) + "/publicurl",
-      type: "GET"
+      type: "GET",
     })
-      .done(function(data) {
+      .done(function (data) {
         console.log(data);
         alert(data.signedUrl);
       })
-      .fail(function(err) {
+      .fail(function (err) {
         console.log("DELETE /dm/buckets/ call failed\n" + err.statusText);
       })
   );
@@ -1036,45 +1045,43 @@ function filesTreeContextMenu(node, callback) {
     callback({
       refreshTree: {
         label: "Refresh",
-        action: function() {
-          $("#forgeFiles")
-            .jstree(true)
-            .refresh();
-        }
+        action: function () {
+          $("#forgeFiles").jstree(true).refresh();
+        },
       },
       bucketDelete: {
         label: "Delete bucket",
-        action: function(obj) {
+        action: function (obj) {
           deleteBucket(MyVars.selectedNode.id);
-        }
+        },
       },
       fileUpload: {
         label: "Upload file",
-        action: function(obj) {
+        action: function (obj) {
           $("#forgeUploadHidden").trigger("click");
-        }
-      }
+        },
+      },
     });
   } else {
     callback({
       fileDelete: {
         label: "Delete file",
-        action: function(obj) {
+        action: function (obj) {
           deleteFile(MyVars.selectedNode.id);
-        }
+        },
       },
       fileDownload: {
         label: "Download file",
-        action: function(obj) {
+        action: function (obj) {
           downloadFile(MyVars.selectedNode.id);
-        }
+        },
       },
       publicUrl: {
         label: "Public URL",
-        action: function(obj) {
+        action: function (obj) {
           getPublicUrl(MyVars.selectedNode.id);
-        }
-      }
+        },
+      },
     });
   }
 
@@ -1102,14 +1109,14 @@ function showHierarchy(urn, guid, objectIds, rootFileName, fileExtType) {
     objectIds,
     rootFileName,
     fileExtType,
-    function(manifest) {
+    function (manifest) {
       initializeViewer(urn);
       getMetadata(
         urn,
-        function(guid) {
+        function (guid) {
           showProgress("Retrieving hierarchy...", "inprogress");
 
-          getHierarchy(urn, guid, function(data) {
+          getHierarchy(urn, guid, function (data) {
             showProgress("Retrieved hierarchy", "success");
 
             for (var derId in manifest.derivatives) {
@@ -1125,7 +1132,7 @@ function showHierarchy(urn, guid, objectIds, rootFileName, fileExtType) {
             prepareHierarchyTree(urn, guid, data.data);
           });
         },
-        function() {}
+        function () {}
       );
     }
   );
@@ -1173,45 +1180,43 @@ function prepareHierarchyTree(urn, guid, json) {
       core: {
         check_callback: true,
         themes: { icons: true },
-        data: json.objects
+        data: json.objects,
       },
       checkbox: {
         tie_selection: false,
         three_state: true,
-        whole_node: false
+        whole_node: false,
       },
       types: {
         default: {
-          icon: "glyphicon glyphicon-cloud"
+          icon: "glyphicon glyphicon-cloud",
         },
         object: {
-          icon: "glyphicon glyphicon-save-file"
-        }
+          icon: "glyphicon glyphicon-save-file",
+        },
       },
       plugins: ["types", "sort", "checkbox", "ui", "themes", "contextmenu"],
       contextmenu: {
         select_node: false,
-        items: hierarchyTreeContextMenu
-      }
+        items: hierarchyTreeContextMenu,
+      },
     })
-    .bind("select_node.jstree", function(evt, data) {
+    .bind("select_node.jstree", function (evt, data) {
       if (data.node.type === "object") {
         var urn = MyVars.selectedUrn;
         var guid = MyVars.selectedGuid;
         var objectId = data.node.original.objectid;
 
         // Empty the property tree
-        $("#forgeProperties")
-          .empty()
-          .jstree("destroy");
+        $("#forgeProperties").empty().jstree("destroy");
 
-        fetchProperties(urn, guid, function(props) {
+        fetchProperties(urn, guid, function (props) {
           preparePropertyTree(urn, guid, objectId, props);
           selectInViewer([objectId]);
         });
       }
     })
-    .bind("check_node.jstree uncheck_node.jstree", function(evt, data) {
+    .bind("check_node.jstree uncheck_node.jstree", function (evt, data) {
       // To avoid recursion we are checking if the changes are
       // caused by a viewer selection which is calling
       // selectInHierarchyTree()
@@ -1221,7 +1226,7 @@ function prepareHierarchyTree(urn, guid, json) {
 
         // Convert from strings to numbers
         var objectIds = [];
-        $.each(nodeIds, function(index, value) {
+        $.each(nodeIds, function (index, value) {
           objectIds.push(parseInt(value, 10));
         });
 
@@ -1259,10 +1264,8 @@ function hierarchyTreeContextMenu(node, callback) {
 
   var menuItem = {
     label: "Select in Fusion",
-    action: function(obj) {
-      var path = $("#forgeHierarchy")
-        .jstree()
-        .get_path(node, "/");
+    action: function (obj) {
+      var path = $("#forgeHierarchy").jstree().get_path(node, "/");
       console.log(path);
 
       // Open this in the browser:
@@ -1271,7 +1274,7 @@ function hierarchyTreeContextMenu(node, callback) {
         "fusion360://command=open&file=something&properties=" +
         encodeURIComponent(path);
       $("#fusionLoader").attr("src", url);
-    }
+    },
   };
   menuItems[0] = menuItem;
 
@@ -1293,7 +1296,7 @@ function hierarchyTreeContextMenu(node, callback) {
 function fetchProperties(urn, guid, onsuccess) {
   var props = $("#forgeProperties").data("forgeProperties");
   if (!props) {
-    getProperties(urn, guid, function(data) {
+    getProperties(urn, guid, function (data) {
       $("#forgeProperties").data("forgeProperties", data.data);
       onsuccess(data.data);
     });
@@ -1311,14 +1314,14 @@ function addSubProperties(node, props) {
     if (subProp instanceof Object) {
       var length = node.children.push({
         text: subPropId,
-        type: "properties"
+        type: "properties",
       });
       var newNode = node.children[length - 1];
       addSubProperties(newNode, subProp);
     } else {
       node.children.push({
         text: subPropId + " = " + subProp.toString(),
-        type: "property"
+        type: "property",
       });
     }
   }
@@ -1346,22 +1349,22 @@ function preparePropertyTree(urn, guid, objectId, props) {
       core: {
         check_callback: true,
         themes: { icons: true },
-        data: data.children
+        data: data.children,
       },
       types: {
         default: {
-          icon: "glyphicon glyphicon-cloud"
+          icon: "glyphicon glyphicon-cloud",
         },
         property: {
-          icon: "glyphicon glyphicon-tag"
+          icon: "glyphicon glyphicon-tag",
         },
         properties: {
-          icon: "glyphicon glyphicon-folder-open"
-        }
+          icon: "glyphicon glyphicon-folder-open",
+        },
       },
-      plugins: ["types", "sort"]
+      plugins: ["types", "sort"],
     })
-    .bind("activate_node.jstree", function(evt, data) {
+    .bind("activate_node.jstree", function (evt, data) {
       //
     });
 }
@@ -1395,8 +1398,8 @@ function setAecProfile(viewer) {
       [Autodesk.Viewing.Private.Prefs3D.AMBIENT_SHADOWS]: false,
       [Autodesk.Viewing.Private.Prefs3D.ANTIALIASING]: true,
       [Autodesk.Viewing.Private.Prefs3D.GROUND_SHADOW]: false,
-      [Autodesk.Viewing.Private.Prefs3D.GROUND_REFLECTION]: false
-    })
+      [Autodesk.Viewing.Private.Prefs3D.GROUND_REFLECTION]: false,
+    }),
   };
 
   const customProfile = new Autodesk.Viewing.Profile(aecProfileSettings);
@@ -1413,7 +1416,7 @@ function initializeViewer(urn) {
   var options = {
     document: "urn:" + urn,
     env: "AutodeskProduction", //'AutodeskStaging', //'AutodeskProduction',
-    getAccessToken: get2LegToken
+    getAccessToken: get2LegToken,
     //useConsolidation: false,
     //consolidationMemoryLimit: 150 * 1024 * 1024,
     //isAEC: false,
@@ -1426,13 +1429,16 @@ function initializeViewer(urn) {
   } else {
     var viewerElement = document.getElementById("forgeViewer");
     var config = {
-      extensions: ['Autodesk.Viewing.MarkupsCore', 'Autodesk.Viewing.MarkupsGui'],
+      extensions: [
+        "Autodesk.Viewing.MarkupsCore",
+        "Autodesk.Viewing.MarkupsGui",
+      ],
       //experimental: ['webVR_orbitModel']
     };
     MyVars.viewer = new Autodesk.Viewing.GuiViewer3D(viewerElement, config);
-    Autodesk.Viewing.Initializer(options, function() {
+    Autodesk.Viewing.Initializer(options, function () {
       MyVars.viewer.start(); // this would be needed if we also want to load extensions
-      //setAecProfile(MyVars.viewer);  
+      //setAecProfile(MyVars.viewer);
       loadDocument(MyVars.viewer, options.document);
       addSelectionListener(MyVars.viewer);
     });
@@ -1440,18 +1446,19 @@ function initializeViewer(urn) {
 }
 
 function addSelectionListener(viewer) {
-  viewer.addEventListener(Autodesk.Viewing.SELECTION_CHANGED_EVENT, function(
-    event
-  ) {
-    selectInHierarchyTree(event.dbIdArray);
+  viewer.addEventListener(
+    Autodesk.Viewing.SELECTION_CHANGED_EVENT,
+    function (event) {
+      selectInHierarchyTree(event.dbIdArray);
 
-    var dbId = event.dbIdArray[0];
-    if (dbId) {
-      viewer.getProperties(dbId, function(props) {
-        console.log(props.externalId);
-      });
+      var dbId = event.dbIdArray[0];
+      if (dbId) {
+        viewer.getProperties(dbId, function (props) {
+          console.log(props.externalId);
+        });
+      }
     }
-  });
+  );
 }
 
 function loadDocument(viewer, documentId) {
@@ -1465,7 +1472,7 @@ function loadDocument(viewer, documentId) {
   Autodesk.Viewing.Document.load(
     documentId,
     // onLoad
-    function(doc) {
+    function (doc) {
       var geometryItems = doc
         .getRoot()
         .search({ role: "2d", type: "geometry" });
@@ -1475,12 +1482,12 @@ function loadDocument(viewer, documentId) {
         geometryItems.push(doc.getRoot().getDefaultGeometry());
       }
 
-      viewer.loadDocumentNode(doc, geometryItems[0]).then(i => {
+      viewer.loadDocumentNode(doc, geometryItems[0]).then((i) => {
         // documented loaded, any action?
       });
     },
     // onError
-    function(errorMsg) {
+    function (errorMsg) {
       //showThumbnail(documentId.substr(4, documentId.length - 1));
     }
   );
@@ -1536,18 +1543,18 @@ function showProgress(text, status) {
   }
 }
 
-MyVars.getAllProps = async function() {
+MyVars.getAllProps = async function () {
   var propTree = {};
   var handled = [];
-  var getProps = async function(id, propNode) {
-    return new Promise(resolve => {
-      NOP_VIEWER.getProperties(id, props => {
+  var getProps = async function (id, propNode) {
+    return new Promise((resolve) => {
+      NOP_VIEWER.getProperties(id, (props) => {
         resolve(props);
       });
     });
   };
 
-  var getPropsRec = async function(id, propNode) {
+  var getPropsRec = async function (id, propNode) {
     var props = await getProps(id, propNode);
     handled.push(props.dbId);
     propNode["child_" + props.dbId] = props.properties;
@@ -1574,10 +1581,10 @@ function getActiveConfigurationProperties(viewer) {
     return;
   }
 
-  viewer.getProperties(dbIds[0], props => {
-    props.properties.forEach(prop => {
+  viewer.getProperties(dbIds[0], (props) => {
+    props.properties.forEach((prop) => {
       if (prop.displayName === "Active Configuration") {
-        viewer.getProperties(prop.displayValue, confProps => {
+        viewer.getProperties(prop.displayValue, (confProps) => {
           console.log(confProps);
         });
 
@@ -1600,7 +1607,7 @@ PropertyInspectorExtension.prototype = Object.create(
 );
 PropertyInspectorExtension.prototype.constructor = PropertyInspectorExtension;
 
-PropertyInspectorExtension.prototype.load = function() {
+PropertyInspectorExtension.prototype.load = function () {
   if (this.viewer.toolbar) {
     // Toolbar is already available, create the UI
     this.createUI();
@@ -1615,7 +1622,7 @@ PropertyInspectorExtension.prototype.load = function() {
   return true;
 };
 
-PropertyInspectorExtension.prototype.onToolbarCreated = function() {
+PropertyInspectorExtension.prototype.onToolbarCreated = function () {
   this.viewer.removeEventListener(
     av.TOOLBAR_CREATED_EVENT,
     this.onToolbarCreatedBinded
@@ -1624,7 +1631,7 @@ PropertyInspectorExtension.prototype.onToolbarCreated = function() {
   this.createUI();
 };
 
-PropertyInspectorExtension.prototype.createUI = function() {
+PropertyInspectorExtension.prototype.createUI = function () {
   var viewer = this.viewer;
   var panel = this.panel;
 
@@ -1634,7 +1641,7 @@ PropertyInspectorExtension.prototype.createUI = function() {
   );
   toolbarButtonShowDockingPanel.icon.classList.add("adsk-icon-properties");
   toolbarButtonShowDockingPanel.container.style.color = "orange";
-  toolbarButtonShowDockingPanel.onClick = function(e) {
+  toolbarButtonShowDockingPanel.onClick = function (e) {
     // if null, create it
     if (panel == null) {
       panel = new PropertyInspectorPanel(
@@ -1661,7 +1668,7 @@ PropertyInspectorExtension.prototype.createUI = function() {
   viewer.toolbar.addControl(this.subToolbar);
 };
 
-PropertyInspectorExtension.prototype.unload = function() {
+PropertyInspectorExtension.prototype.unload = function () {
   this.viewer.toolbar.removeControl(this.subToolbar);
   return true;
 };
@@ -1680,7 +1687,7 @@ function PropertyInspectorPanel(viewer, container, id, title, options) {
   this.breadcrumbsItems = [];
   Autodesk.Viewing.UI.PropertyPanel.call(this, container, id, title, options);
 
-  this.showBreadcrumbs = function() {
+  this.showBreadcrumbs = function () {
     // Create it if not there yet
     if (!this.breadcrumbs) {
       this.breadcrumbs = document.createElement("span");
@@ -1693,7 +1700,7 @@ function PropertyInspectorPanel(viewer, container, id, title, options) {
 
     // Fill it with items
     this.breadcrumbs.appendChild(document.createTextNode(" ["));
-    this.breadcrumbsItems.forEach(dbId => {
+    this.breadcrumbsItems.forEach((dbId) => {
       if (this.breadcrumbs.children.length > 0) {
         var text = document.createTextNode(" > ");
         this.breadcrumbs.appendChild(text);
@@ -1708,12 +1715,12 @@ function PropertyInspectorPanel(viewer, container, id, title, options) {
     this.breadcrumbs.appendChild(document.createTextNode("]"));
   }; // showBreadcrumbs
 
-  this.showProperties = function(dbId) {
+  this.showProperties = function (dbId) {
     this.removeAllProperties();
 
     var that = this;
-    this.viewer.getProperties(dbId, props => {
-      props.properties.forEach(prop => {
+    this.viewer.getProperties(dbId, (props) => {
+      props.properties.forEach((prop) => {
         that.addProperty(
           prop.displayName + (prop.type === 11 ? "[dbId]" : ""),
           prop.displayValue,
@@ -1726,7 +1733,7 @@ function PropertyInspectorPanel(viewer, container, id, title, options) {
     this.showBreadcrumbs();
   }; // showProperties
 
-  this.onBreadcrumbClick = function(event) {
+  this.onBreadcrumbClick = function (event) {
     var dbId = parseInt(event.currentTarget.text);
     var index = this.breadcrumbsItems.indexOf(dbId);
     this.breadcrumbsItems = this.breadcrumbsItems.splice(0, index);
@@ -1736,7 +1743,7 @@ function PropertyInspectorPanel(viewer, container, id, title, options) {
 
   // This is overriding the default property click handler
   // of Autodesk.Viewing.UI.PropertyPanel
-  this.onPropertyClick = function(property) {
+  this.onPropertyClick = function (property) {
     if (!property.name.includes("[dbId]")) {
       return;
     }
@@ -1745,7 +1752,7 @@ function PropertyInspectorPanel(viewer, container, id, title, options) {
     this.showProperties(dbId);
   }; // onPropertyClick
 
-  this.onSelectionChanged = function(event) {
+  this.onSelectionChanged = function (event) {
     var dbId = event.dbIdArray[0];
 
     if (!dbId) {

@@ -18,13 +18,28 @@
 
 'use strict';
 
-var app = require('./server/server');
+var expressApp = require('./server/server');
+
+const { app, BrowserWindow } = require('electron');
+app.on('ready', function() {
+  let mainWindow = new BrowserWindow({
+    width: 1280,
+    height: 720,
+    webPreferences: {
+      nodeIntegration: true
+    },
+    autoHideMenuBar: true,
+    useContentSize: true,
+    resizable: true,
+  });
+  mainWindow.loadURL('http://localhost:3000/');
+  mainWindow.focus();
+});
 
 // start server
-var server = app.listen(app.get('port'), function () {
-  if (process.env.FORGE_CLIENT_ID == null || process.env.FORGE_CLIENT_SECRET == null)
-    console.log('*****************\nWARNING: Client ID & Client Secret not defined as environment variables.\n*****************');
-
+var server = expressApp.listen(expressApp.get('port'), function () {
   console.log('Starting at ' + (new Date()).toString());
   console.log('Server listening on port ' + server.address().port);
 });
+
+
