@@ -50,14 +50,20 @@ router.get('/files/:id', function (req, res) {
     var objects = new forgeSDK.ObjectsApi();
     objects.getObject(boName.bucketKey, boName.objectName, {}, tokenSession.getOAuth(), tokenSession.getCredentials())
       .then(function (data) {
-          var fileParts = boName.objectName.split('.')
-          var fileExt = fileParts[fileParts.length - 1];
           res.set('content-type', 'application/octet-stream');
           res.set('Content-Disposition', 'attachment; filename="' + boName.objectName + '"');
-          res.end(data.body);
+          if (Buffer.isBuffer(data.body)) {
+            res.end(data.body);
+          } else if (typeof(data.body) === 'string') {
+            res.end(Buffer.from(data.body));
+          } else if (typeof(data.body) === 'object') {
+            res.end(Buffer.from(JSON.stringify(data.body)));
+          } else {
+            throw "Give up"
+          }
       })
       .catch(function (error) {
-          res.status(error.statusCode).end(error.statusMessage);
+          res.status(error.statusCode || 500).end(error.statusMessage || "Server error");
       });
 })
 
