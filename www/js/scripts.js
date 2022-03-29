@@ -16,6 +16,8 @@ $(document).ready(function() {
     $("#client_secret").val(client_secret);
   }
 
+  MyVars.nohierarchy = (url.searchParams.get("nohierarchy") != null);
+
   $("#createBucket").click(function(evt) {
     // adamnagy_2017_06_14
     var bucketName = $("#bucketName").val();
@@ -1104,6 +1106,10 @@ function showHierarchy(urn, guid, objectIds, rootFileName, fileExtType) {
     fileExtType,
     function(manifest) {
       initializeViewer(urn);
+
+      if (MyVars.nohierarchy)
+        return;
+
       getMetadata(
         urn,
         function(guid) {
