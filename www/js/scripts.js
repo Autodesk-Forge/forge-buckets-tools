@@ -1096,7 +1096,7 @@ function showHierarchy(urn, guid, objectIds, rootFileName, fileExtType) {
 
   // Get svf export in order to get hierarchy and properties
   // for the model
-  var format = "svf";
+  var format = "svf2";
   askForFileType(
     format,
     urn,

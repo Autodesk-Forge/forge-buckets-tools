@@ -163,7 +163,7 @@ router.post('/export', jsonParser, function (req, res) {
         "type": req.body.format
     };
 
-    if (req.body.format === 'svf') {
+    if (req.body.format.startsWith('svf')) {
         item.views = ['2d', '3d'];
     }
 
