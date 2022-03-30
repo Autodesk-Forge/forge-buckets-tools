@@ -1434,7 +1434,7 @@ function initializeViewer(urn) {
       extensions: ['Autodesk.Viewing.MarkupsCore', 'Autodesk.Viewing.MarkupsGui'],
       //experimental: ['webVR_orbitModel']
       env: "AutodeskProduction2", //'AutodeskStaging', //'AutodeskProduction',
-      api: "streamingV2",
+      api: "streamingV2" + (getDerivativesRegion() === "EMEA" ? "_EU" : ""),
     };
     MyVars.viewer = new Autodesk.Viewing.GuiViewer3D(viewerElement, config);
     Autodesk.Viewing.Initializer(options, function() {
