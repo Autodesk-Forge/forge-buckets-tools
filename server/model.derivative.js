@@ -171,6 +171,11 @@ router.post('/export', jsonParser, function (req, res) {
         item.advanced = req.body.advanced;
     }
 
+    if (req.body?.fileExtType === 'ifc') {
+      item.advanced = item.advanced || {};
+      item.advanced.conversionMethod = "modern";
+    }
+
     var input = (req.body.fileExtType && req.body.fileExtType === 'zip' ? {
         "urn": req.body.urn,
         "rootFilename": req.body.rootFileName,
