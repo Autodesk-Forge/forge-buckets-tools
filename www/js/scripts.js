@@ -1418,7 +1418,9 @@ function initializeViewer(urn) {
 
   var options = {
     document: "urn:" + urn,
-    getAccessToken: get2LegToken
+    getAccessToken: get2LegToken,
+    env: "AutodeskProduction2", //'AutodeskStaging', //'AutodeskProduction',
+    api: "streamingV2" + (getDerivativesRegion() === "EMEA" ? "_EU" : "")
     //useConsolidation: false,
     //consolidationMemoryLimit: 150 * 1024 * 1024,
     //isAEC: false,
@@ -1433,8 +1435,6 @@ function initializeViewer(urn) {
     var config = {
       extensions: ['Autodesk.Viewing.MarkupsCore', 'Autodesk.Viewing.MarkupsGui'],
       //experimental: ['webVR_orbitModel']
-      env: "AutodeskProduction2", //'AutodeskStaging', //'AutodeskProduction',
-      api: "streamingV2" + (getDerivativesRegion() === "EMEA" ? "_EU" : ""),
     };
     MyVars.viewer = new Autodesk.Viewing.GuiViewer3D(viewerElement, config);
     Autodesk.Viewing.Initializer(options, function() {
