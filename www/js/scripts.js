@@ -1,6 +1,7 @@
 var MyVars = {
   keepTrying: true,
-  ajaxCalls: []
+  ajaxCalls: [],
+  uploadInParallel: false
 };
 
 $(document).ready(function() {
@@ -108,7 +109,50 @@ $(document).ready(function() {
     });
   }
 
-  async function readChunk(file, start, end, total) {
+  function uploadChunkAsync(fileName, folderId, sessionId, range, readerResult) {
+    return new Promise((resolve, reject) => {
+      console.log(
+        "uploadChunk [before]: sessionId = " + sessionId + ", range = " + range
+      );
+
+      MyVars.ajaxCalls.push(
+        $.ajax({
+          url: "/dm/chunks",
+          type: "POST",
+          headers: {
+            "Content-Type": "application/octet-stream",
+            "x-file-name": fileName,
+            id: folderId,
+            sessionid: sessionId,
+            range: range
+          },
+          processData: false,
+          data: readerResult // d is the chunk got by readAsBinaryString(...)
+        })
+          .done(function(response) {
+            // if 'd' is uploaded successfully then ->
+            console.log(
+              "uploadChunk [done]: sessionId = " +
+                sessionId +
+                ", range = " +
+                range
+            );
+            resolve(response);
+          })
+          .fail(function(error) {
+            console.log(
+              "uploadChunk [fail]: sessionId = " +
+                sessionId +
+                ", range = " +
+                range
+            );
+            reject(error);
+          })
+      );
+    });
+  }
+
+  async function readChunkAsync(file, start, end, total) {
     return new Promise((resolve, reject) => {
       var reader = new FileReader();
       var blob = file.slice(start, end);
@@ -126,13 +170,13 @@ $(document).ready(function() {
   }
 
   async function uploadChunks(file) {
-    const retryMax = 3;
-    const step = 2 * 1024 * 1024; // 2 MB suggested
+    const RETRY_MAX = 3;
+    const CHUNK_SIZE = 2 * 1024 * 1024; // 2 MB suggested
     const total = file.size; // total size of file
     const folderId = MyVars.selectedNode.id;
     const fileName = file.name;
     const sessionId = uuidv4();
-    const stepsMax = Math.floor(total / step) + 1;
+    const stepsMax = Math.floor(total / CHUNK_SIZE) + 1;
     let stepsCount = 0;
 
     let createPromise = function(start, end) {
@@ -141,7 +185,7 @@ $(document).ready(function() {
         let retryCount = 0;
 
         console.log(`runPromise: ${start} - ${end}`);
-        let resRead = await readChunk(file, start, end, total);
+        let resRead = await readChunkAsync(file, start, end, total);
 
         while (true) {
           try {
@@ -167,7 +211,7 @@ $(document).ready(function() {
             resolve(true);
             return;
           } catch {
-            if (++retryCount > retryMax) {
+            if (++retryCount > RETRY_MAX) {
               reject(false);
               return;
             }
@@ -179,8 +223,8 @@ $(document).ready(function() {
     };
 
     MyVars.promises = [];
-    for (let start = 0; start < total; start += step) {
-      MyVars.promises.push(createPromise(start, start + step));
+    for (let start = 0; start < total; start += CHUNK_SIZE) {
+      MyVars.promises.push(createPromise(start, start + CHUNK_SIZE));
     }
 
     // Whether some failed or not, let's wait for all of them to return resolve or reject
@@ -210,10 +254,214 @@ $(document).ready(function() {
     });
   }
 
+  async function uploadChunksAsync(file, options, callback) {
+    const RETRY_MAX = 3;
+    const CHUNK_SIZE = 5 * 1024 * 1024; // 5 MB suggested
+    const BATCH_SIZE = 5; // how many upload URLs are requested at a time
+    const bucketName = MyVars.selectedNode.id;
+    const fileName = file.name;
+    const stepsMax = Math.floor(file.size / CHUNK_SIZE) + 1;
+    const finishedChunks = new Set();
+
+    let getUrlsAsync = function(index, count, uploadKey) {
+      console.log(`getUrlsAsync: index = ${index}, count = ${count}`);
+
+      return new Promise(async (resolve, reject) => {
+        console.log(`getUrlsPromises: index = ${index}`);
+
+        // The lowest index accepted is 1 not 0, so I'm adding 1 to the indices used locally 
+        let url = `/dm/uploadurls?bucketName=${bucketName}&objectName=${fileName}&index=${index + 1}&count=${count}`;
+        if (uploadKey)
+          url += `&uploadKey=${uploadKey}`;
+
+        console.log(`getUrlsPromises.fetch: url = ${url}`);
+        try {
+          let res = await fetch(url, {
+            method: 'GET'
+          })
+          
+          let data = await res.json();
+
+          resolve(data);
+        } catch {
+          reject("failed");
+        }
+      });
+    }
+        
+    let readChunkAsync = function(file, start, end, total) {
+      return new Promise((resolve, reject) => {
+        console.log(`readChunkAsync: ${start} - ${end}`);
+
+        var reader = new FileReader();
+        var blob = file.slice(start, end);
+  
+        reader.onload = function(e) {
+          var currentStart = start;
+          var currentEnd = start + e.loaded - 1;
+          var range = "bytes " + currentStart + "-" + currentEnd + "/" + total;
+  
+          resolve({ readerResult: reader.result, range: range });
+        };
+  
+        reader.readAsArrayBuffer(blob);
+      });
+    }
+
+    let uploadChunkAsync = function(start, end, url) {
+      console.log(`uploadChunkAsync: ${start} - ${end}`);
+      return new Promise(async (resolve, reject) => {
+        if (finishedChunks.has(start)) {
+          resolve(200);
+          return;
+        }
+
+        let resRead = await readChunkAsync(file, start, end, file.size);
+
+        console.log(`uploadChunkAsync.fetch: url=${url}`);
+        try {
+          let res = await fetch(url, {
+            method: 'PUT',
+            body: resRead.readerResult
+          })
+
+          if (res.status !== 200) {
+            reject(res.status);
+          } else {
+            resolve(200);
+            finishedChunks.add(start);
+            callback("inprogress", Math.ceil((finishedChunks.size / stepsMax) * 100).toString() + "%");
+          }
+        } catch {
+          reject(500);
+        }
+      });
+    };
+
+    let uploadBatchAsync = function(step, count, uploadKey) {
+      console.log(`uploadBatchAsync: index=${step}, uploadKey=${uploadKey}`);
+      return new Promise(async (resolve, reject) => {
+        try {
+          let promises = [];
+          
+          let resUrls = await getUrlsAsync(step, count, uploadKey);
+          uploadKey = resUrls.uploadKey
+
+          for (let index = 0; index < count; index++) {
+            const start = (step + index) * CHUNK_SIZE;
+            const end = start + CHUNK_SIZE;
+            promises.push(uploadChunkAsync(start, end, resUrls.urls[index]));
+
+            if (!options.uploadInParallel)
+              await promises[index];
+          }
+
+          // Whether some failed or not, let's wait for all of them resolve or one reject
+          // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/all
+          // It rejects immediately upon any of the input promises rejecting
+          if (options.uploadInParallel)
+            await Promise.all(promises);
+
+          resolve(uploadKey);
+        } catch {
+          reject("failed");
+        }
+
+        /*
+        let failed = results.find(item => {
+          return item.status === "rejected";
+        });
+
+        if (failed) {
+          reject(failed)
+        } else {
+          resolve(uploadKey)
+        }
+        */
+      });
+    };
+
+    let uploadKey;
+    for (let step = 0; step < stepsMax; step += BATCH_SIZE) {
+      let retryCount = 0;
+      while (true) {
+        try {
+          const count = Math.min(stepsMax - step, BATCH_SIZE); 
+          uploadKey = await uploadBatchAsync(step, count, uploadKey);
+
+          break;
+        } catch (ex) {
+          if (MyVars.keepTrying && retryCount++ < RETRY_MAX) {
+            console.log(`Wait for retry: retryCount=${retryCount}`);
+            await new Promise(r => setTimeout(r, retryCount * 5000));
+          } else {
+            callback("cancelled");
+            return;
+          }
+        }
+      }
+    }
+
+    let res = await fetch(`/dm/uploadurls?bucketName=${bucketName}&objectName=${fileName}`, {
+      method: 'POST',
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        uploadKey
+      })
+    })
+    let data = await res.json();
+    console.log(data);
+    if (data.status === "error") {
+      callback("failed");
+    } else {
+      callback("success");
+    }
+  }
+  
   $("#forgeUploadHidden").change(function(evt) {
     showProgress("Uploading file... ", "inprogress");
 
-    uploadChunks(this.files[0]);
+    let start = new Date().getTime();
+
+    uploadChunksAsync(this.files[0], {uploadInParallel: MyVars.uploadInParallel}, (state, message) => {
+      switch (state) {
+        case "inprogress":
+          showProgress(
+            "Uploading file... " + message,
+            "inprogress"
+          );
+          break;
+
+        case "failed":
+          showProgress("Upload failed", "failed");
+          $("#forgeUploadHidden").val("");
+          MyVars.keepTrying = true;
+          break;
+
+        case "cancelled":
+          showProgress("Upload cancelled", "failed");
+          $("#forgeUploadHidden").val("");
+          MyVars.keepTrying = true;
+          break;
+
+        case "success":
+          let end = new Date().getTime();
+          let diff = end - start; 
+          console.log(`${this.files[0].size} byte uploaded in ${diff} ms (parallel: ${MyVars.uploadInParallel})`)  
+
+          showProgress("File uploaded", "success");
+          $("#forgeFiles")
+            .jstree(true)
+            .refresh();
+
+          $("#forgeUploadHidden").val("");
+          MyVars.keepTrying = true;
+          break;
+      }
+      
+    });
   });
 
   var upload = $("#uploadFile").click(function(evt) {
@@ -972,6 +1220,24 @@ function downloadFile(id) {
   window.open(url, "_blank");
 }
 
+function downloadFileNew(id) {
+  console.log("Download file = " + id);
+
+  $.ajax({
+    url: "/dm/filesnew/" + encodeURIComponent(id),
+    type: "GET"
+  })
+    .done(function(data) {
+      console.log(data);
+      if (data.status === "complete") {
+        window.open(data.url, "_blank");
+      }
+    })
+    .fail(function(err) {
+      console.log("GET /dm/files/ call failed\n" + err.statusText);
+    })
+}
+
 function deleteFile(id) {
   console.log("Delete file = " + id);
   MyVars.ajaxCalls.push(
@@ -1068,7 +1334,7 @@ function filesTreeContextMenu(node, callback) {
       fileDownload: {
         label: "Download file",
         action: function(obj) {
-          downloadFile(MyVars.selectedNode.id);
+          downloadFileNew(MyVars.selectedNode.id);
         }
       },
       publicUrl: {
@@ -1118,21 +1384,22 @@ function showHierarchy(urn, guid, objectIds, rootFileName, fileExtType) {
           getHierarchy(urn, guid, function(data) {
             showProgress("Retrieved hierarchy", "success");
 
-            for (var derId in manifest.derivatives) {
-              var der = manifest.derivatives[derId];
-              // We just have to make sure there is an svf
+            //for (var derId in manifest.derivatives) {
+              //var der = manifest.derivatives[derId];
+              // We just have to make sure there is an svf/svf2
               // translation, but the viewer will find it
               // from the urn
-              if (der.outputType === "svf") {
+              //if (der.outputType.startsWith("svf")) {
                 //initializeViewer(urn);
-              }
-            }
+              //}
+            //}
 
             prepareHierarchyTree(urn, guid, data.data);
           });
         },
         function() {}
       );
+
     }
   );
 }
@@ -1416,34 +1683,39 @@ function initializeViewer(urn) {
 
   console.log("Launching Autodesk Viewer for: " + urn);
 
-  var options = {
-    document: "urn:" + urn,
-    getAccessToken: get2LegToken
-    //useConsolidation: false,
-    //consolidationMemoryLimit: 150 * 1024 * 1024,
-    //isAEC: false,
-    //api: 'fluent',
-    // env: 'FluentProduction'
-  };
-
-  if (MyVars.viewer) {
-    loadDocument(MyVars.viewer, options.document);
-  } else {
-    var viewerElement = document.getElementById("forgeViewer");
-    var config = {
-      extensions: ['Autodesk.Viewing.MarkupsCore', 'Autodesk.Viewing.MarkupsGui'],
-      //experimental: ['webVR_orbitModel']
+  get2LegToken((token, expiry) => {
+    var options = {
+      document: "urn:" + urn,
       env: "AutodeskProduction2", //'AutodeskStaging', //'AutodeskProduction',
       api: "streamingV2" + (getDerivativesRegion() === "EMEA" ? "_EU" : ""),
+      accessToken: token
+      //getAccessToken: get2LegToken
+      //useConsolidation: false,
+      //consolidationMemoryLimit: 150 * 1024 * 1024,
+      //isAEC: false,
+      //api: 'fluent',
+      // env: 'FluentProduction'
     };
-    MyVars.viewer = new Autodesk.Viewing.GuiViewer3D(viewerElement, config);
-    Autodesk.Viewing.Initializer(options, function() {
-      MyVars.viewer.start(); // this would be needed if we also want to load extensions
-      //setAecProfile(MyVars.viewer);  
+  
+    if (MyVars.viewer) {
       loadDocument(MyVars.viewer, options.document);
-      addSelectionListener(MyVars.viewer);
-    });
-  }
+    } else {
+      var viewerElement = document.getElementById("forgeViewer");
+      var config = {
+        extensions: ['Autodesk.Viewing.MarkupsCore', 'Autodesk.Viewing.MarkupsGui'],
+        //experimental: ['webVR_orbitModel']
+        //environment: "AutodeskStaging"
+      };
+      MyVars.viewer = new Autodesk.Viewing.GuiViewer3D(viewerElement, config);
+      MyVars.viewer.setTheme('light-theme'); 
+      Autodesk.Viewing.Initializer(options, function() {
+        MyVars.viewer.start(); // this would be needed if we also want to load extensions
+        //setAecProfile(MyVars.viewer);  
+        loadDocument(MyVars.viewer, options.document);
+        addSelectionListener(MyVars.viewer);
+      });
+    }
+  })
 }
 
 function addSelectionListener(viewer) {

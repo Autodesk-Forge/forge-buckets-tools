@@ -21,6 +21,8 @@ var config = require('./config');
 
 var forgeSDK = require('forge-apis');
 
+var https = require('https');
+
 router.post('/buckets', jsonParser, function (req, res) {
     var tokenSession = new token(req.session);
 
@@ -65,6 +67,38 @@ router.get('/files/:id', function (req, res) {
       .catch(function (error) {
           res.status(error.statusCode || 500).end(error.statusMessage || "Server error");
       });
+})
+
+router.get('/filesnew/:id', function (req, res) {
+  var id = req.params.id
+  var boName = getBucketKeyObjectName(id)
+
+  var tokenSession = new token(req.session);
+
+  const options = {
+    hostname: 'developer.api.autodesk.com',
+    port: 443,
+    path: `/oss/v2/buckets/${boName.bucketKey}/objects/${boName.objectName}/signeds3download`,
+    headers: {
+      Authorization: `Bearer ${tokenSession.getCredentials().access_token}`
+    },
+    method: 'GET'
+  }
+  
+  const req2 = https.request(options, res2 => {
+    console.log(`statusCode: ${res2.statusCode}`)
+  
+    res2.on('data', d => {
+      let json = JSON.parse(d);
+      res.json(json);
+    })
+  })
+  
+  req2.on('error', error => {
+    console.error(error)
+  })
+  
+  req2.end();
 })
 
 router.delete('/files/:id', function (req, res) {
@@ -197,6 +231,80 @@ router.post('/chunks', rawParser, function (req, res) {
       }
     });
 
+});
+
+// Get URLs for upload
+router.get('/uploadurls', function (req, res) {
+  const query = req.query;
+  
+  const tokenSession = new token(req.session);
+
+  const options = {
+    hostname: 'developer.api.autodesk.com',
+    port: 443,
+    path: `/oss/v2/buckets/${query.bucketName}/objects/${query.objectName}/signeds3upload?parts=${query.count}&firstPart=${query.index}`,
+    headers: {
+      Authorization: `Bearer ${tokenSession.getCredentials().access_token}`
+    },
+    method: 'GET'
+  }
+
+  if (query.uploadKey) {
+    options.path += `&uploadKey=${query.uploadKey}`;
+  }
+  
+  const req2 = https.request(options, res2 => {
+    console.log(`statusCode: ${res2.statusCode}`)
+  
+    res2.on('data', d => {
+      let json = JSON.parse(d);
+      res.json(json);
+    })
+  })  
+
+  req2.on('error', (e) => {
+    console.log(`GET uploadurls: ${e.message}`);
+    res.status(500).end();
+  });
+
+  req2.end();
+});
+
+// Finishes the upload
+router.post('/uploadurls', jsonParser, function (req, res) {
+  const query = req.query;
+  
+  const tokenSession = new token(req.session);
+
+  const options = {
+    hostname: 'developer.api.autodesk.com',
+    port: 443,
+    path: `/oss/v2/buckets/${query.bucketName}/objects/${query.objectName}/signeds3upload`,
+    headers: {
+      "Authorization": `Bearer ${tokenSession.getCredentials().access_token}`,
+      "Content-Type": "application/json" 
+    },
+    method: 'POST'
+  }
+
+  const req2 = https.request(options, res2 => {
+    console.log(`statusCode: ${res2.statusCode}`)
+  
+    res2.on('data', d => {
+      let json = JSON.parse(d);
+      res.json(json);
+    })
+  })
+
+  req2.on('error', (e) => {
+    console.log(`POST uploadurls: ${e.message}`);
+    res.status(500).end();
+  });
+
+  req2.write(JSON.stringify({
+    uploadKey: req.body.uploadKey
+  }));
+  req2.end();  
 });
 
 function getBucketKeyObjectName(objectId) {
