@@ -22,6 +22,12 @@ This utility app lets you to see and create new buckets on **OSS**, upload and d
 
 # Usage
 
+The first time you use this app with the **credentials** of a given **Forge app**, it will generate all the neccessary **app bundles** and **activities**:
+
+![thumbnail](/readme/Setup.png)
+
+If **app bundles** and **activities** with the specific names already exist for the given **Forge app** then they will not be overwritten with the correct ones. The best thing is to create a new **Forge app** and use its **credentials** with this sample app.   
+
 1. **On the top** you can provide your **Forge** app's **Client Id** and **Client Secret** to use for authentication\
 It also has a **Progress Info** field where information about the progress of the translation or any other warnings or successes will be displayed\
 When you **right-click** a file then apart from being able to **delete** it or **download** it, you can also generate a **read/write** publicly accessible **URL** for it \
