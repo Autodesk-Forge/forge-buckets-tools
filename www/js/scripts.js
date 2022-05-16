@@ -17,6 +17,7 @@ $(document).ready(function() {
   }
 
   MyVars.nohierarchy = (url.searchParams.get("nohierarchy") != null);
+  MyVars.usesvf2 = (url.searchParams.get("usesvf2") != null);
 
   $("#createBucket").click(function(evt) {
     // adamnagy_2017_06_14
@@ -1096,7 +1097,7 @@ function showHierarchy(urn, guid, objectIds, rootFileName, fileExtType) {
 
   // Get svf export in order to get hierarchy and properties
   // for the model
-  var format = "svf2";
+  var format = MyVars.usesvf2 ? "svf2" : "svf";
   askForFileType(
     format,
     urn,
