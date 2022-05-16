@@ -171,7 +171,7 @@ router.post('/export', jsonParser, function (req, res) {
         item.advanced = req.body.advanced;
     }
 
-    if (req.body?.fileExtType === 'ifc') {
+    if (req.body.fileExtType === 'ifc') {
       item.advanced = item.advanced || {};
       item.advanced.conversionMethod = "modern";
     }
