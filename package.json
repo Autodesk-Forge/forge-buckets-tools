@@ -19,7 +19,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/developer-autodesk/model.derivative-nodejs-sample"
+    "url": "https://github.com/Autodesk-Forge/forge-buckets-tools"
   },
   "scripts": {
     "start": "NODE_ENV=production node start.js",
