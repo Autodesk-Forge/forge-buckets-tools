@@ -258,7 +258,7 @@ $(document).ready(function() {
   async function uploadChunksAsync(file, options, callback) {
     const RETRY_MAX = 3;
     const CHUNK_SIZE = 5 * 1024 * 1024; // 5 MB suggested
-    const BATCH_SIZE = 10; // how many upload URLs are requested at a time
+    const BATCH_SIZE = 5; // how many upload URLs are requested at a time
     const bucketName = MyVars.selectedNode.id;
     const fileName = file.name;
     const stepsMax = Math.floor(file.size / CHUNK_SIZE) + 1;
