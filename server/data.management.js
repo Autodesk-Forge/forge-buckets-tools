@@ -219,8 +219,14 @@ router.get('/downloadurl', function (req, res) {
   const req2 = https.request(options, res2 => {
     console.log(`statusCode: ${res2.statusCode}`)
   
+    let str = '';
+
     res2.on('data', d => {
-      let json = JSON.parse(d);
+      str += d.toString();
+    })
+
+    res2.on('end', () => {
+      let json = JSON.parse(str);
       res.json(json);
     })
   })
@@ -256,8 +262,14 @@ router.get('/uploadurls', function (req, res) {
   const req2 = https.request(options, res2 => {
     console.log(`statusCode: ${res2.statusCode}`)
   
+    let str = '';
+
     res2.on('data', d => {
-      let json = JSON.parse(d);
+      str += d.toString();
+    })
+
+    res2.on('end', () => {
+      let json = JSON.parse(str);
       res.json(json);
     })
   })  
@@ -290,8 +302,14 @@ router.post('/uploadurls', jsonParser, function (req, res) {
   const req2 = https.request(options, res2 => {
     console.log(`statusCode: ${res2.statusCode}`)
   
+    let str = '';
+
     res2.on('data', d => {
-      let json = JSON.parse(d);
+      str += d.toString();
+    })
+
+    res2.on('end', () => {
+      let json = JSON.parse(str);
       res.json(json);
     })
   })
