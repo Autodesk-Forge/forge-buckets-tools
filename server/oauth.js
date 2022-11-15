@@ -27,8 +27,7 @@ var router = express.Router();
 
 var forgeSDK = require('forge-apis');
 
-// forge config information, such as client ID and secret
-var config = require('./config');
+router.use(express.json());
 
 // this end point will logoff the user by destroying the session
 // as of now there is no Forge endpoint to invalidate tokens
@@ -38,13 +37,13 @@ router.get('/user/logoff', function (req, res) {
 });
 
 // wait for Autodesk callback (oAuth callback)
-router.get('/user/token', function (req, res) {
+router.post('/user/token', function (req, res) {
     var tokenSession = new token(req.session);
 
     try {
-      var client_id = req.query.client_id;
-      var client_secret = req.query.client_secret;
-      var scopes = req.query.scopes;
+      var client_id = req.body.client_id;
+      var client_secret = req.body.client_secret;
+      var scopes = req.body.scopes;
       scopes = scopes.split(' ')
 
       var req = new forgeSDK.AuthClientTwoLegged(client_id, client_secret, scopes);

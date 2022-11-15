@@ -542,11 +542,14 @@ function get2LegToken(onSuccess, onError) {
     MyVars.ajaxCalls.push(
       $.ajax({
         url: "/user/token",
-        data: {
+        type: "POST",
+        contentType: "application/json",
+        dataType: "json",
+        data: JSON.stringify({
           client_id: client_id,
           client_secret: client_secret,
           scopes: scopes
-        },
+        }),
         success: function(data) {
           onSuccess(data.token, data.expires_in);
         },
