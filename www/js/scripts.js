@@ -1075,6 +1075,13 @@ function getDerivativesRegion() {
 
 function prepareFilesTree() {
   console.log("prepareFilesTree");
+
+  let tree = $("#forgeFiles").jstree(true);
+  if (tree) {
+    tree.refresh();
+    return;
+  }
+            
   $("#forgeFiles")
     .jstree({
       core: {
