@@ -28,7 +28,7 @@ router.get('/formats', function (req, res) {
             res.json(formats.body);
         })
         .catch(function (error) {
-            res.status(error.statusCode).end(error.statusMessage);
+            res.status(error.statusCode ? error.statusCode : 500).end(error.statusMessage);
         });
 });
 
@@ -51,7 +51,7 @@ router.get('/manifests/:urn', function (req, res) {
             res.json(data.body);
         })
         .catch(function (error) {
-            res.status(error.statusCode).end(error.statusMessage);
+            res.status(error.statusCode ? error.statusCode : 500).end(error.statusMessage);
         });
 });
 
@@ -65,7 +65,7 @@ router.delete('/manifests/:urn', function (req, res) {
                 res.json(data.body);
             })
             .catch(function (error) {
-                res.status(error.statusCode).end(error.statusMessage);
+                res.status(error.statusCode ? error.statusCode : 500).end(error.statusMessage);
             });
 
     } catch (err) {
@@ -87,7 +87,7 @@ router.get('/metadatas/:urn', function (req, res) {
             res.json(data.body);
         })
         .catch(function (error) {
-            res.status(error.statusCode).end(error.statusMessage);
+            res.status(error.statusCode ? error.statusCode : 500).end(error.statusMessage);
         });
 });
 
@@ -109,7 +109,7 @@ router.get('/hierarchy', function (req, res) {
             }
         })
         .catch(function (error) {
-            res.status(error.statusCode).end(error.statusMessage);
+            res.status(error.statusCode ? error.statusCode : 500).end(error.statusMessage);
         });
 });
 
@@ -127,7 +127,7 @@ router.get('/properties', function (req, res) {
             res.json(data.body);
         })
         .catch(function (error) {
-            res.status(error.statusCode).end(error.statusMessage);
+            res.status(error.statusCode ? error.statusCode : 500).end(error.statusMessage);
         });
 });
 
@@ -149,7 +149,7 @@ router.get('/download', function (req, res) {
             res.end(data.body);
         })
         .catch(function (error) {
-            res.status(error.statusCode).end(error.statusMessage);
+            res.status(error.statusCode ? error.statusCode : 500).end(error.statusMessage);
         });
 });
 
@@ -200,7 +200,7 @@ router.post('/export', jsonParser, function (req, res) {
             res.json(data.body);
         })
         .catch(function (error) {
-            res.status(error.statusCode).end(error.statusMessage);
+            res.status(error.statusCode ? error.statusCode : 500).end(error.statusMessage);
         });
 });
 

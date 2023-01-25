@@ -1803,6 +1803,8 @@ function showProgress(text, status) {
 
   if (status === "failed") {
     newClasses = "btn btn-danger";
+    if (newText === "")
+      newText = "Failed"
   } else if (status === "inprogress" || status === "pending") {
     newClasses = "btn btn-warning";
     newText += " (Click to stop)";
